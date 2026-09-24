@@ -557,10 +557,14 @@ function renderGameCard(sport, g){
   if(pro.grade1 || pro.sharpAction1 || pro.betPct1){
     const strip = document.createElement('div'); strip.className='pro-strip';
     let parts = [];
-    if(pro.betPct1) parts.push(`<b>Bets:</b> ${pro.betPct1}/${pro.betPct2||'-'}`);
-    if(pro.moneyPct1) parts.push(`<b>Money:</b> ${pro.moneyPct1}/${pro.moneyPct2||'-'}`);
-    if(pro.grade1) parts.push(`<b>Grade:</b> ${pro.grade1}/${pro.grade2||'-'}`);
-    if(pro.bestLine1) parts.push(`<b>Line:</b> ${pro.bestLine1} ${pro.bestJuice1||''} / ${pro.bestLine2||''} ${pro.bestJuice2||''}`);
+    // Every team-split stat is labeled with the actual team name, not a bare "X%/Y%" pair --
+    // a bare pair forces the reader to guess which side is which. Team1/Team2 always refer to
+    // the same order the game's own header uses (g.t1 @ g.t2), so this stays consistent with it.
+    if(pro.betPct1) parts.push(`<b>Bets:</b> ${g.t1} ${pro.betPct1} / ${g.t2} ${pro.betPct2||'-'}`);
+    if(pro.moneyPct1) parts.push(`<b>Money:</b> ${g.t1} ${pro.moneyPct1} / ${g.t2} ${pro.moneyPct2||'-'}`);
+    if(pro.grade1) parts.push(`<b>Grade:</b> ${g.t1} ${pro.grade1} / ${g.t2} ${pro.grade2||'-'}`);
+    if(pro.bestLine1) parts.push(`<b>Line:</b> ${g.t1} ${pro.bestLine1} ${pro.bestJuice1||''} / ${g.t2} ${pro.bestLine2||''} ${pro.bestJuice2||''}`);
+    if(pro.diff) parts.push(`<b>Bets/Money Diff:</b> ${pro.diff}`);
     strip.innerHTML = parts.join('<span style="opacity:.4">&nbsp;|&nbsp;</span>');
     body.appendChild(strip);
   }
