@@ -1077,10 +1077,21 @@ function renderGameCard(sport, g){
       html += `<div class="col"><div class="lbl">Grade</div><div class="val">${t1} <span class="grade ${gradeClass(p.Grade1)}">${p.Grade1||'-'}</span> / ${t2} <span class="grade ${gradeClass(p.Grade2)}">${p.Grade2||'-'}</span></div></div>`;
       html += `<div class="col"><div class="lbl">Pro Line</div><div class="val">${t1} ${p.ProLine1||''} / ${t2} ${p.ProLine2||''}</div></div>`;
     }
+    // Sharp Report exposes 5 signal types (SharpAction, BigMoney, PROSystems,
+    // ModelProj, TopExperts), each with a "1"/"2" suffix per team -- 10
+    // fields total. The old code only ever checked team1's 4 of the wrong
+    // set (missed PROSystems entirely, missed all of team2's fields), so any
+    // game where the sharp action was on team2's side silently showed "—"
+    // and undercounted the rest. Now every active signal is named and
+    // attributed to the team it's actually on, not just totaled.
     const sh = g.pro.sharp;
     if(sh){
-      const sig = ['SharpAction1','BigMoney1','ModelProj1','TopExperts1'].filter(k=>sh[k]==='Y').length;
-      html += `<div class="col"><div class="lbl">Sharp signals</div><div class="val">${sig?('▲ '+sig+' active'):'—'}</div></div>`;
+      const SIGNAL_LABELS = {SharpAction:'Sharp Action', BigMoney:'Big Money', PROSystems:'PRO Systems', ModelProj:'Model Proj', TopExperts:'Top Experts'};
+      const sigsFor = n => Object.keys(SIGNAL_LABELS).filter(k => sh[k+n]==='Y').map(k=>SIGNAL_LABELS[k]);
+      const s1 = sigsFor(1), s2 = sigsFor(2);
+      const part1 = s1.length ? `${t1}: ${s1.join(', ')}` : `${t1}: —`;
+      const part2 = s2.length ? `${t2}: ${s2.join(', ')}` : `${t2}: —`;
+      html += `<div class="col"><div class="lbl">Sharp signals</div><div class="val">${part1} &middot; ${part2}</div></div>`;
     }
     const pub = g.pro.public;
     if(pub){
