@@ -1064,13 +1064,23 @@ function renderGameCard(sport, g){
   // cover all 5 types for BOTH teams. Best odds come from the clean `odds`
   // section only; sharp/projections/public "Best Odds" cells can hold unlabeled
   // alt-line/exchange prices (same-sign line pairs), so they are never shown.
+  // Narratives (NFL, from 10.2Narrative): hometown / birthday / former-team
+  // notes keyed by matchup abbreviation. JAX is Action's JAC. Shown as the
+  // last column of the PRO box, right of Sharp signals.
+  let narrHits = [];
+  if(sport==='nfl' && window.EMBEDDED_NARRATIVES && g.team1Abbrev && g.team2Abbrev){
+    const nAb = a => ({JAX:'JAC'}[a] || a);
+    const want = [g.team1Abbrev, g.team2Abbrev].map(nAb).sort().join('|');
+    narrHits = window.EMBEDDED_NARRATIVES.filter(n=>
+      String(n.matchup||'').split('@').map(x=>nAb(x.trim())).sort().join('|') === want);
+  }
   const pro = g.pro.projections || g.pro.public || g.pro.sharp || g.pro.odds || null;
-  if(pro){
+  if(pro || narrHits.length){
     const row = document.createElement('div');
     row.className='prorow';
     let html='';
     const p = g.pro.projections, sh = g.pro.sharp, pub = g.pro.public, od = g.pro.odds;
-    const ref = p || pub || sh || od;
+    const ref = p || pub || sh || od || {};
     const n1 = esc(ref.Team1 || g.team1 || ''), n2 = esc(ref.Team2 || g.team2 || '');
     const pair = (a,b)=>`<div>${n1} ${a}</div><div>${n2} ${b}</div>`;
     const has = v => v!==undefined && v!==null && v!=='';
@@ -1108,29 +1118,13 @@ function renderGameCard(sport, g){
       const inner = (a1||a2) ? ((a1?`<div>${n1}: ${a1}</div>`:'') + (a2?`<div>${n2}: ${a2}</div>`:'')) : '—';
       html += col('Sharp signals', inner);
     }
+    if(narrHits.length){
+      html += col('Narratives', narrHits.map(n=>
+        `<div><b>${esc(n.narrative)}</b>: ${esc(n.player)} (${esc(n.position)}, ${esc(n.player_team)})<div class="propnote">${esc(n.detail||'')}</div></div>`
+      ).join(''));
+    }
     row.innerHTML = html;
     body.appendChild(row);
-  }
-
-  // Narratives (NFL): hometown games / birthdays / former teams, keyed by
-  // matchup abbreviation (10.2Narrative). JAX is Action's JAC.
-  if(sport==='nfl' && window.EMBEDDED_NARRATIVES && g.team1Abbrev && g.team2Abbrev){
-    const nAb = a => ({JAX:'JAC'}[a] || a);
-    const want = [g.team1Abbrev, g.team2Abbrev].map(nAb).sort().join('|');
-    const hits = window.EMBEDDED_NARRATIVES.filter(n=>{
-      const t = String(n.matchup||'').split('@').map(x=>nAb(x.trim())).sort().join('|');
-      return t === want;
-    });
-    if(hits.length){
-      const nsec = document.createElement('div');
-      nsec.className = 'picksec';
-      let nh = '<h4>Narratives</h4>';
-      hits.forEach(n=>{
-        nh += `<div class="pickrow"><div><div class="ptext">${esc(n.narrative)} &middot; ${esc(n.player)} (${esc(n.position)}, ${esc(n.player_team)})</div><div class="pwho">${esc(n.detail||'')}</div></div></div>`;
-      });
-      nsec.innerHTML = nh;
-      body.appendChild(nsec);
-    }
   }
 
   // Picks section
