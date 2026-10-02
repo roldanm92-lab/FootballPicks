@@ -1055,29 +1055,55 @@ function renderGameCard(sport, g){
   const body = document.createElement('div');
   body.className = 'gb';
 
-  // PRO data row
-  const pro = g.pro.projections || g.pro.public || g.pro.sharp || null;
-  if(pro || g.pro.sharp){
+  // PRO data row (rewritten 2026-10-02): every split stat is labeled with the
+  // row's own Team1/Team2 (the 1/2 field suffixes), Action's PRO model line and
+  // the market's consensus/best odds are SEPARATE columns, and sharp signals
+  // cover all 5 types for BOTH teams. Best odds come from the clean `odds`
+  // section only; sharp/projections/public "Best Odds" cells can hold unlabeled
+  // alt-line/exchange prices (same-sign line pairs), so they are never shown.
+  const pro = g.pro.projections || g.pro.public || g.pro.sharp || g.pro.odds || null;
+  if(pro){
     const row = document.createElement('div');
     row.className='prorow';
     let html='';
-    const p = g.pro.projections;
+    const p = g.pro.projections, sh = g.pro.sharp, pub = g.pro.public, od = g.pro.odds;
+    const ref = p || pub || sh || od;
+    const n1 = esc(ref.Team1 || g.team1 || ''), n2 = esc(ref.Team2 || g.team2 || '');
+    const pair = (a,b)=>`<div>${n1} ${a}</div><div>${n2} ${b}</div>`;
+    const has = v => v!==undefined && v!==null && v!=='';
+    const lineOK = (a,b)=>{ const x=parseFloat(a), y=parseFloat(b);
+      return isFinite(x) && isFinite(y) && ((x>0)!==(y>0) || (x===0 && y===0)); };
+    const col = (lbl, inner)=>`<div class="col"><div class="lbl">${lbl}</div><div class="val">${inner}</div></div>`;
     if(p){
-      html += `<div class="col"><div class="lbl">Grade</div><div class="val"><span class="grade ${gradeClass(p.Grade1)}">${p.Grade1||'-'}</span> / <span class="grade ${gradeClass(p.Grade2)}">${p.Grade2||'-'}</span></div></div>`;
-      html += `<div class="col"><div class="lbl">Pro Line</div><div class="val">${p.ProLine1||''} / ${p.ProLine2||''}</div></div>`;
+      html += col('Grade', pair(`<span class="grade ${gradeClass(p.Grade1)}">${esc(p.Grade1||'-')}</span>`,
+                                `<span class="grade ${gradeClass(p.Grade2)}">${esc(p.Grade2||'-')}</span>`));
+      if(has(p.ProLine1) || has(p.ProLine2)){
+        const e1 = has(p.Edge1) ? ` <span class="propnote">(${esc(p.Edge1)})</span>` : '';
+        const e2 = has(p.Edge2) ? ` <span class="propnote">(${esc(p.Edge2)})</span>` : '';
+        html += col('Action PRO line', pair(esc(p.ProLine1||'—')+e1, esc(p.ProLine2||'—')+e2));
+      }
+      if(has(p.Consensus1) || has(p.Consensus2)){
+        html += col('Market consensus', pair(esc(p.Consensus1||'—'), esc(p.Consensus2||'—')));
+      }
     }
-    const sh = g.pro.sharp;
-    if(sh){
-      const sig = ['SharpAction1','BigMoney1','ModelProj1','TopExperts1'].filter(k=>sh[k]==='Y').length;
-      html += `<div class="col"><div class="lbl">Sharp signals</div><div class="val">${sig?('▲ '+sig+' active'):'—'}</div></div>`;
+    if(ref && (has(ref.Open1) || has(ref.Open2))){
+      html += col('Open', pair(esc(ref.Open1||'—'), esc(ref.Open2||'—')));
     }
-    const pub = g.pro.public;
+    if(od && od.BestLine1 && lineOK(od.BestLine1, od.BestLine2)){
+      html += col('Best odds', pair(`${esc(od.BestLine1)} (${esc(od.BestJuice1||'')})`,
+                                    `${esc(od.BestLine2)} (${esc(od.BestJuice2||'')})`));
+    }
     if(pub){
-      html += `<div class="col"><div class="lbl">Bet% / Money%</div><div class="val">${pub.BetPct1||''}/${pub.BetPct2||''} &middot; ${pub.MoneyPct1||''}/${pub.MoneyPct2||''}</div></div>`;
+      const bm = (b,m)=> esc(b||'—') + (has(m) ? ' / ' + esc(m) : '');
+      html += col('Bet% / Money%', pair(bm(pub.BetPct1, pub.MoneyPct1), bm(pub.BetPct2, pub.MoneyPct2)));
     }
-    const od = g.pro.odds || pub || sh || p;
-    if(od && od.BestLine1){
-      html += `<div class="col"><div class="lbl">Best line</div><div class="val">${od.BestLine1} (${od.BestJuice1||''}) / ${od.BestLine2} (${od.BestJuice2||''})</div></div>`;
+    if(sh){
+      const SIG = [['SharpAction','Sharp Action'],['BigMoney','Big Money'],['PROSystems','PRO Systems'],
+                   ['ModelProj','Model Proj'],['TopExperts','Top Experts']];
+      const act = k => SIG.filter(([f])=>sh[f+k]==='Y').map(([,n])=>n).join(', ');
+      const a1 = act('1'), a2 = act('2');
+      const inner = (a1||a2) ? ((a1?`<div>${n1}: ${a1}</div>`:'') + (a2?`<div>${n2}: ${a2}</div>`:'')) : '—';
+      html += col('Sharp signals', inner);
     }
     row.innerHTML = html;
     body.appendChild(row);
