@@ -444,6 +444,7 @@ function parseFullDateTime(str){
 /* ---------------------------------------------------------------------
    3. Game construction
    ------------------------------------------------------------------- */
+const MIN_GAME_DATE = new Date(2026,9,4); // games before this are dropped
 const FALLBACK_DATE = new Date(2026,8,3); // hardcoded early fallback (no time -> midnight)
 
 function newGame(sport){
@@ -835,7 +836,7 @@ function rebuild(sport){
   if(!RAW[sport]) { GAMES[sport]=[]; return; }
   const games = buildGames(sport, RAW[sport]);
   if(sport==='nfl' && RAW.nfl_td_csv) mergeTdScorers(games, sport, RAW.nfl_td_csv);
-  GAMES[sport] = games;
+  GAMES[sport] = games.filter(g=>!g.date || g.date >= MIN_GAME_DATE);
 }
 
 /* ---------------------------------------------------------------------
