@@ -167,6 +167,7 @@
   .pl-cells{display:grid;gap:6px;}
   .pl-cell{background:var(--panel2);border-radius:6px;padding:6px 4px;text-align:center;font-size:11px;color:var(--sub);}
   .pl-cell b{display:block;font-size:14px;color:var(--text);}
+  .pl-cell b.good{color:var(--accent2);} .pl-cell b.bad{color:var(--bad);}
   .pl-kv{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border);}
   .pl-kv:last-child{border-bottom:0;}
   .pl-sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;}
@@ -1536,7 +1537,7 @@ document.addEventListener('DOMContentLoaded', init);
 (function(){
 const PL = {data:null, view:'screener', sport:'nfl', player:null, prop:null, game:null,
   f:{search:'', market:'', pos:'', game:'', starred:false}, sort:'edge',
-  rushMetric:'Yards', recMetric:'Yards', logOpen:false, stars:new Set()};
+  rushMetric:'Yards', recMetric:'Yards', cardTab:'player', logOpen:false, stars:new Set()};
 try{ PL.stars = new Set(JSON.parse(localStorage.getItem('nfl_propplays')||'[]')); }catch(e){}
 try{ const v=localStorage.getItem('props_view'); if(v) PL.view=v; }catch(e){}
 const q = s=>document.querySelector(s);
@@ -1725,11 +1726,13 @@ function playerCard(){
       <div class="pl-sub">Implied ${imp==null?'–':imp.toFixed(0)+'%'} · matchup grade ${E(p.grade||'–')}${p.posRank?` · pos rank ${ord(p.posRank)}`:''}</div></div></div>
     <div class="pl-cells" style="grid-template-columns:repeat(auto-fit,minmax(44px,1fr));margin-top:10px">
       ${['2026','2025','H2H','L5','L10','L20','L30'].concat(Object.keys(h)).filter((k,i,a)=>h[k]!=null&&a.indexOf(k)===i).map(k=>[k,h[k]]).map(([k,v])=>`<div class="pl-cell">${k}<b class="${v>=70?'good':v<=40?'bad':''}">${v}%</b></div>`).join('')}</div></div>`;
-  const sg=signals(p);
+  const sg=signals(p), tabs=[['player','Player'],['opp',`vs ${p.opp} defense`]];
+  s+=`<div class="pl-seg" data-seg="card" style="margin:0 0 10px">${tabs.map(([k,l])=>`<span class="${PL.cardTab===k?'on':''}" data-v="${k}" style="flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600">${E(l)}</span>`).join('')}</div>`;
   s+=`<div class="pl-card"><p class="pl-h">Signal check</p><div class="pl-sig">
     <div class="pl-for"><b class="good">For (${sg.F.length})</b><br>${sg.F.map(E).join('<br>')||'<span class="mut">Nothing yet</span>'}</div>
     <div class="pl-against"><b class="bad">Against (${sg.A.length})</b><br>${sg.A.map(E).join('<br>')||'<span class="mut">Nothing yet</span>'}</div></div></div>`;
-  if(!pl) return s+`<div class="pl-card pl-sub">Full player detail (charts, trends, matchup) isn't in this data yet. Only screener fields were captured for this prop.</div>`;
+  if(PL.cardTab==='opp') return s+opponentView(p,g);
+  if(!pl) return s+`<div class="pl-card pl-sub">Full player detail (charts, trends) isn't in this data yet. Only screener fields were captured for this prop. The ${E(p.opp)} defense tab shows what's known about the opponent.</div>`;
   const lg=(pl.log||{})[p.market];
   if(lg) s+=`<div class="pl-card"><p class="pl-h">Last ${lg.length} games vs ${p.line}</p>${hitChart(lg,p.line)}</div>`;
   s+=`<div class="pl-grid">
@@ -1739,20 +1742,47 @@ function playerCard(){
     ${pl.favorability.map(([k,r])=>`<div style="margin:6px 0"><div class="pl-kv" style="border:0;padding:0 0 3px"><span>${E(k)}</span><b class="${rankCls(r)}">${ord(r)}</b></div>
       <div style="height:6px;background:var(--panel2);border-radius:3px"><div style="height:6px;width:${(r/32*100).toFixed(0)}%;border-radius:3px;background:${r<=10?'var(--bad)':r>=23?'var(--accent2)':'var(--sub)'}"></div></div></div>`).join('')}
     <div class="pl-note">Longer bar = softer matchup (32nd is easiest).</div></div>`;
-  s+=teamPanel(p.opp,p.pos,g&&g.home===p.opp);
-  s+=vsPosLog(p.opp,p.pos,p.market);
   s+=`<div class="pl-grid">`;
   if(pl.trends) s+=`<div class="pl-card"><p class="pl-h">Recent trends · 2026 vs 2025</p>${pl.trends.map(t=>{const up=t.now>t.prev;
      return `<div class="pl-kv"><span>${E(t.stat)}<div class="pl-sub">L20: ${E(t.l20||'')}</div></span><b class="${up?'good':'bad'}">${up?'▲':'▼'} ${t.now} <span class="mut">from ${t.prev}</span></b></div>`;}).join('')}</div>`;
   if(pl.books) s+=`<div class="pl-card"><p class="pl-h">Odds by book</p>${pl.books.map((b,i)=>`<div class="pl-kv"><span>${E(b[0])}${i===0?' <span class="good">best</span>':''}</span><b>${fmtOdds(b[1])}${b[2]!=null?` <span class="mut">/ ${fmtOdds(b[2])}</span>`:''}</b></div>`).join('')}</div>`;
-  const tr=(PL.data.teams[p.team]||{}).trench, otr=(PL.data.teams[p.opp]||{}).trench;
-  if(tr||otr) s+=`<div class="pl-card"><p class="pl-h">Trench insights</p>
-    ${tr?Object.entries(tr).map(([k,v])=>`<div class="pl-kv"><span>${E(p.team)} ${({sacksAllowed:'sacks allowed',ypc:'yds/carry'})[k]||k}</span><b>${E(v)}</b></div>`).join(''):''}
-    ${otr?Object.entries(otr).map(([k,v])=>`<div class="pl-kv"><span>${E(p.opp)} ${({sackRate:'sack rate',ypcAllowed:'yds/carry allowed'})[k]||k}</span><b>${E(v)}</b></div>`).join(''):''}</div>`;
-  if(pl.roster) s+=`<div class="pl-card"><p class="pl-h">Roster activity · ${E(p.team)}</p>${pl.roster.map(r=>`<div class="pl-kv"><span>${E(r[0])} <span class="mut">${E(r[1])}</span><div class="pl-sub">${E(r[3]||'')}</div></span><b class="${/out/i.test(r[2])?'bad':'warn'}" style="${/out/i.test(r[2])?'':'color:var(--warn)'}">${E(r[2])}</b></div>`).join('')}</div>`;
-  const ot=PL.data.teams[p.opp];
-  if((ot&&ot.restNote)||pl.insight) s+=`<div class="pl-card"><p class="pl-h">Context</p>${pl.insight?`<div class="pl-kv"><span>Matchup insight</span><b>${E(pl.insight.line)}</b></div><div class="pl-sub" style="padding:4px 0 8px">${E(pl.insight.text)}</div>`:''}${ot&&ot.restNote?`<div class="pl-kv"><span>${E(p.opp)} health</span><b>${E(ot.restNote)}</b></div>`:''}</div>`;
+  if(pl.roster) s+=`<div class="pl-card"><p class="pl-h">Roster activity · ${E(p.team)}</p>${pl.roster.map(r=>`<div class="pl-kv"><span>${E(r[0])} <span class="mut">${E(r[1])}</span><div class="pl-sub">${E(r[3]||'')}</div></span><b style="color:${/out/i.test(r[2])?'var(--bad)':'var(--warn)'}">${E(r[2])}</b></div>`).join('')}</div>`;
+  if(pl.insight) s+=`<div class="pl-card"><p class="pl-h">Matchup insight</p><div class="pl-kv"><span>${E(p.player)}</span><b>${E(pl.insight.line)}</b></div><div class="pl-sub" style="padding:4px 0">${E(pl.insight.text)}</div></div>`;
   s+=`</div>`;
+  return s;
+}
+
+const NFL_NAMES={ARI:'Arizona Cardinals',ATL:'Atlanta Falcons',BAL:'Baltimore Ravens',BUF:'Buffalo Bills',CAR:'Carolina Panthers',CHI:'Chicago Bears',CIN:'Cincinnati Bengals',CLE:'Cleveland Browns',DAL:'Dallas Cowboys',DEN:'Denver Broncos',DET:'Detroit Lions',GB:'Green Bay Packers',HOU:'Houston Texans',IND:'Indianapolis Colts',JAC:'Jacksonville Jaguars',JAX:'Jacksonville Jaguars',KC:'Kansas City Chiefs',LA:'Los Angeles Rams',LAR:'Los Angeles Rams',LAC:'Los Angeles Chargers',LV:'Las Vegas Raiders',MIA:'Miami Dolphins',MIN:'Minnesota Vikings',NE:'New England Patriots',NO:'New Orleans Saints',NYG:'New York Giants',NYJ:'New York Jets',PHI:'Philadelphia Eagles',PIT:'Pittsburgh Steelers',SEA:'Seattle Seahawks',SF:'San Francisco 49ers',TB:'Tampa Bay Buccaneers',TEN:'Tennessee Titans',WAS:'Washington Commanders'};
+function opponentView(p,g){
+  const o=p.opp, t=PL.data.teams[o]||{}, mine=PL.data.teams[p.team]||{}, isHome=g&&g.home===o;
+  let s=`<div class="pl-card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div><div class="pl-name" style="font-size:17px">${E(t.name||NFL_NAMES[o]||o)}</div>
+      <div class="pl-sub">${g?E(g.records[o]||''):''}${t.standing?' · '+E(t.standing):''} · ${isHome?'home':'away'} vs ${E(p.team)}</div></div>
+    ${g?`<div style="text-align:right"><div class="pl-name">${E(o)} ${g.fav===o?g.spread:'+'+Math.abs(g.spread)} · O/U ${g.total}</div>
+      <div class="pl-sub">${g.ml?'ML '+fmtOdds(g.ml[o])+' · ':''}${E(g.kickoff)}</div></div>`:''}</div>
+    ${t.restNote?`<div class="pl-note" style="color:var(--warn)">${E(t.restNote)}</div>`:''}</div>`;
+  const chips=[];
+  if(t.rushAllowedPerG!=null) chips.push(['Rush yds allowed/g',t.rushAllowedPerG,'']);
+  if(t.vsRunRank!=null) chips.push(['vs run',ord(t.vsRunRank),rankCls(t.vsRunRank)]);
+  if(t.vsPassRank!=null) chips.push(['vs pass',ord(t.vsPassRank),rankCls(t.vsPassRank)]);
+  if(chips.length) s+=`<div class="pl-cells" style="grid-template-columns:repeat(${chips.length},minmax(0,1fr));margin-bottom:10px">${chips.map(c=>`<div class="pl-cell">${c[0]}<b class="${c[2]}">${E(c[1])}</b></div>`).join('')}</div>`;
+  if(t.pastGames&&t.pastGames.length){
+    s+=`<div class="pl-card"><p class="pl-h">${E(o)} recent results</p><div class="pl-chips" style="margin:0">${t.pastGames.map(x=>{
+      const [a,as,b,bs]=x, us=a===o?as:bs, them=a===o?bs:as, opp2=a===o?b:a, w=us>them;
+      return `<div class="pl-chip" style="cursor:default;border-color:${w?'rgba(34,201,138,.5)':'rgba(242,85,74,.4)'}"><b class="${w?'good':'bad'}">${w?'W':'L'} ${us}-${them}</b><div class="pl-sub">vs ${E(opp2)}</div></div>`;}).join('')}</div></div>`;
+  }
+  const dv=t.defVsPos||{}, posList=[p.pos].concat(Object.keys(dv).filter(k=>k!==p.pos));
+  posList.forEach(ps=>{ s+=teamPanel(o,ps,isHome).replace(t.restNote?`<div class="pl-note">${E(t.restNote)}</div>`:'@@none@@',''); });
+  const logs=(t.vsPosLog||{})[p.pos]||{};
+  if(logs[p.market]) s+=vsPosLog(o,p.pos,p.market); else Object.keys(logs).forEach(m=>{ s+=vsPosLog(o,p.pos,m); });
+  const OFF={sacksAllowed:'sacks allowed',ypc:'yds/carry'}, DEF={sackRate:'sack rate',ypcAllowed:'yds/carry allowed'};
+  const offR=Object.entries(mine.trench||{}).filter(([k])=>OFF[k]), defR=Object.entries(t.trench||{}).filter(([k])=>DEF[k]);
+  if(offR.length||defR.length) s+=`<div class="pl-card"><p class="pl-h">Trenches · ${E(p.team)} offense vs ${E(o)} defense</p>
+    ${offR.map(([k,v])=>`<div class="pl-kv"><span>${E(p.team)} ${OFF[k]}</span><b>${E(v)}</b></div>`).join('')}
+    ${defR.map(([k,v])=>`<div class="pl-kv"><span>${E(o)} ${DEF[k]}</span><b>${E(v)}</b></div>`).join('')}</div>`;
+  const same=(PL.data.props||[]).filter(x=>x.opp===o && x!==p);
+  s+=`<div class="pl-card" style="padding:4px 8px"><p class="pl-h" style="padding:8px 4px 0">Other props vs ${E(o)}</p>${same.length?same.map(propRow).join(''):'<div class="pl-sub" style="padding:12px">No other props against this defense yet.</div>'}</div>`;
+  if(!t.defVsPos && !defR.length && !t.pastGames) s+=`<div class="pl-card pl-sub">No props.cash defense data captured for ${E(NFL_NAMES[o]||o)} yet. Only game lines are shown. The scraper's team pull (all 32 defenses) fills this in.</div>`;
   return s;
 }
 
@@ -1769,9 +1799,9 @@ function render(){
 function wire(root){
   root.querySelectorAll('[data-plview]').forEach(b=>b.onclick=()=>{ PL.view=b.dataset.plview; try{localStorage.setItem('props_view',PL.view);}catch(e){} render(); });
   root.querySelectorAll('[data-star]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=starKey(PL.data.props[+b.dataset.star]); PL.stars.has(k)?PL.stars.delete(k):PL.stars.add(k); saveStars(); render(); });
-  root.querySelectorAll('[data-prop]').forEach(r=>r.onclick=()=>{ PL.prop=PL.data.props[+r.dataset.prop]; PL.returnTo=PL.view==='player'?'screener':PL.view; PL.view='player'; PL.logOpen=false; render(); window.scrollTo(0,0); });
+  root.querySelectorAll('[data-prop]').forEach(r=>r.onclick=()=>{ PL.prop=PL.data.props[+r.dataset.prop]; PL.cardTab='player'; PL.returnTo=PL.view==='player'?(PL.returnTo||'screener'):PL.view; PL.view='player'; PL.logOpen=false; render(); window.scrollTo(0,0); });
   root.querySelectorAll('[data-game]').forEach(c=>c.onclick=()=>{ PL.game=c.dataset.game; render(); });
-  root.querySelectorAll('[data-seg]').forEach(sg=>sg.querySelectorAll('span').forEach(sp=>sp.onclick=()=>{ if(sg.dataset.seg==='rush') PL.rushMetric=sp.dataset.v; else PL.recMetric=sp.dataset.v; render(); }));
+  root.querySelectorAll('[data-seg]').forEach(sg=>sg.querySelectorAll('span').forEach(sp=>sp.onclick=()=>{ if(sg.dataset.seg==='rush') PL.rushMetric=sp.dataset.v; else if(sg.dataset.seg==='card') PL.cardTab=sp.dataset.v; else PL.recMetric=sp.dataset.v; render(); }));
   const on=(id,ev,fn)=>{ const el=root.querySelector(id); if(el) el[ev]=fn; };
   on('#plBack','onclick',()=>{ PL.view=PL.returnTo||'screener'; render(); });
   on('#plLogToggle','onclick',()=>{ PL.logOpen=!PL.logOpen; render(); });
