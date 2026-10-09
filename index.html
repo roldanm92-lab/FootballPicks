@@ -1682,7 +1682,7 @@ function signals(p){
     '1Q Rec Yards':['Rec yds/g','Targets/g'],'1Q Rush Yards':['Rush yds/g','Rush att/g'],'1Q Pass Yards':['Pass yds/g']})[p.market]||[];
   (pl.trends||[]).filter(t=>REL.includes(t.stat)).forEach(t=>{ if(t.prev==null||!t.prev) return; const d=(t.now-t.prev)/Math.max(t.prev,0.1);
     if(d>=.2) F.push(`${t.stat} up: ${t.now} vs ${t.prev} last year`); else if(d<=-.2) A.push(`${t.stat} down: ${t.now} vs ${t.prev} last year`); });
-  const ts=typeSignal(p); if(ts){ const t=`${TYPE_LBL(ts.ty)} went over their line vs ${p.opp} ${ts.overs} of ${ts.n} times this season (median ${ts.med>0?'+':''}${(+ts.med).toFixed(1)}; league ${Math.round(ts.base*100)}%)`; if(ts.d>=.1) F.push(t); else if(ts.d<=-.1) A.push(t); }
+  const ts=typeSignal(p); if(ts){ const t=`${TYPE_LBL(ts.ty)}${scopeTxt(ts,p)} went over their line vs ${p.opp} ${ts.overs} of ${ts.n} times ${PL.sport==='nba'?'in the last 20 games':'this season'} (median ${ts.med>0?'+':''}${(+ts.med).toFixed(1)}; league ${Math.round(ts.base*100)}%)`; if(ts.d>=.1) F.push(t); else if(ts.d<=-.1) A.push(t); }
   if(p.recent&&p.recent.length>=5){ const o=p.recent.filter(v=>v>p.line).length, t=`Over ${p.line} in ${o} of his last ${p.recent.length} first quarters (avg ${(p.recent.reduce((a,v)=>a+v,0)/p.recent.length).toFixed(1)})`;
     if(o/p.recent.length>=.7) F.push(t); else if(o/p.recent.length<=.4) A.push(t); }
   if(isQ1(p)&&rk&&dv){ const al=((((opp.defVsPos||{})[p.pos]||{}).values||{}).overall||{})[rk]; if(al!=null&&p.line>=2.5){ const t=`${p.opp} allows ${(+al).toFixed(1)} ${RANK_LBL[rk]} per game to ${p.pos}s`; if(al>=p.line*1.25) F.push(t); else if(al<=p.line*.75) A.push(t); } }
@@ -1767,7 +1767,8 @@ const RUSH_ONLY = new Set(['Rush Yards','Rush Attempts','Longest Rush','1Q Rush 
 const REC_MK = new Set(['Receiving Yards','Receptions','Targets','Longest Reception','1Q Rec Yards']);
 function roleOf(name){ return ((PL.data&&PL.data.roles)||{})[name]||null; }
 function typeOf(name,pos,market){
-  const r=roleOf(name); if(!r||r.pos!==pos) return null;
+  const r=roleOf(name); if(PL.sport==='nba') return r&&r.type||null;   /* NBA archetype: same for every market */
+  if(!r||r.pos!==pos) return null;
   if(pos==='WR') return r.type||null;
   if(pos==='RB'){ if(RUSH_ONLY.has(market)) return r.style? r.style+' runners' : null;
     if(REC_MK.has(market)) return r.type==='Receiving'?'Receiving backs':'Non-receiving backs';
@@ -1775,18 +1776,23 @@ function typeOf(name,pos,market){
   return null;
 }
 const lowerFirst = s=> s.replace(/^\w/,c=>c.toLowerCase());
-const TYPE_LBL = t=> ({Slot:'Slot WRs',Outside:'Outside WRs',Hybrid:'Hybrid WRs'})[t]||t;
-function roleShort(name,pos){ const r=roleOf(name); if(!r||r.pos!==pos) return pos;
+const NBA_TYPE_PL = {'Creator':'Creators','Secondary creator':'Secondary creators','Spot-up shooter':'Spot-up shooters','Movement shooter':'Movement shooters',
+  'Slasher':'Slashers','Post scorer':'Post scorers','Rim runner':'Rim runners','Stretch big':'Stretch bigs','Connector':'Connectors'};
+const PT_LBL = {Isolation:'iso',Transition:'transition',PRBallHandler:'P&R ball handler',PRRollman:'P&R roll',Postup:'post-up',Spotup:'spot-up',Handoff:'handoff',Cut:'cuts',OffScreen:'off screens',OffRebound:'putbacks'};
+const TYPE_LBL = t=> ({Slot:'Slot WRs',Outside:'Outside WRs',Hybrid:'Hybrid WRs'})[t]||NBA_TYPE_PL[t]||t;
+function roleShort(name,pos){ const r=roleOf(name); if(PL.sport==='nba') return r? `${pos} · ${r.type}` : pos; if(!r||r.pos!==pos) return pos;
   return pos==='WR'? `${r.type} WR` : `${r.type} RB`; }
-function roleLine(name,pos){ const r=roleOf(name); if(!r||r.pos!==pos) return '';
+function roleLine(name,pos){ const r=roleOf(name);
+  if(PL.sport==='nba') return r? `${r.type} · ${(r.mix||[]).map(([k,v])=>`${v}% ${PT_LBL[k]||k}`).join(', ')}` : '';
+  if(!r||r.pos!==pos) return '';
   if(pos==='WR') return `${r.type} WR · ${r.slotPct}% of receiving production from the slot${r.style?` · ${r.style}`:''}`;
   return `${r.type} RB${r.style?` · ${r.style.toLowerCase()} runner`:''}${r.insidePct!=null?` (${r.insidePct}% of carries between the guards)`:''} · ${r.att} att, ${r.tgt} tgt per game`;
 }
 function typeStats(team,pos,market){
   PL._ts=PL._ts||{}; const key=team+'|'+pos+'|'+market; if(PL._ts[key]) return PL._ts[key];
-  const rows=(((PL.data.teams[team]||{}).vsPosLog||{})[pos]||{})[market]||[], cur=rows.length?Math.max(...rows.map(r=>r.season)):0, out={};
+  const L=((PL.data.teams[team]||{}).vsPosLog||{}), rows=pos==='*'?Object.values(L).flatMap(m=>m[market]||[]):((L[pos]||{})[market]||[]), cur=rows.length?Math.max(...rows.map(r=>r.season)):0, out={};
   const med=a=>{ if(!a.length) return null; const s=a.slice().sort((x,y)=>x-y), m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; };
-  rows.forEach(r=>{ const t=typeOf(r.player,pos,market); if(!t) return; const o=out[t]=out[t]||{cur:{n:0,overs:0,d:[]},all:{n:0,overs:0,d:[]}};
+  rows.forEach(r=>{ const t=typeOf(r.player,pos==='*'?null:pos,market); if(!t) return; const o=out[t]=out[t]||{cur:{n:0,overs:0,d:[]},all:{n:0,overs:0,d:[]}};
     for(const k of r.season===cur?['cur','all']:['all']){ o[k].n++; o[k].overs+=r.hit?1:0; o[k].d.push((+r.result||0)-(+r.line||0)); } });
   Object.values(out).forEach(o=>{ o.cur.med=med(o.cur.d); o.all.med=med(o.all.d); });
   return PL._ts[key]=out;
@@ -1798,27 +1804,35 @@ function typeBase(pos,market,type){
 }
 function typeSignal(p){
   const ty=typeOf(p.player,p.pos,p.market); if(!ty) return null;
-  const s=typeStats(p.opp,p.pos,p.market)[ty], base=typeBase(p.pos,p.market,ty);
+  let scope=p.pos, s=typeStats(p.opp,p.pos,p.market)[ty], base=typeBase(p.pos,p.market,ty);
+  if(PL.sport==='nba' && (!s||s.cur.n<4||base==null)){ scope='*'; s=typeStats(p.opp,'*',p.market)[ty]; base=typeBase('*',p.market,ty); }
   if(!s||s.cur.n<4||base==null) return null;
   const rate=s.cur.overs/s.cur.n, d=(rate-base)*s.cur.n/(s.cur.n+6);
-  return {ty, n:s.cur.n, overs:s.cur.overs, med:s.cur.med, base, d};
+  return {ty, n:s.cur.n, overs:s.cur.overs, med:s.cur.med, base, d, scope};
 }
+const scopeTxt = (ts,p)=> PL.sport!=='nba' ? '' : ts.scope==='*' ? ' (all positions)' : ` at ${p.pos}`;
 function vsTypeTable(team,p){
-  const pos=p.pos; if(pos!=='WR'&&pos!=='RB') return '';
-  const mk=[p.market].concat(pos==='WR'?['Receiving Yards','Receptions']:['Rush Yards','Receptions']).filter((m,i,a)=>a.indexOf(m)===i);
+  const nba=PL.sport==='nba', pos=p.pos; if(!nba && pos!=='WR'&&pos!=='RB') return '';
+  const mk=[p.market].concat(nba?['Points','Pts + Reb + Ast']:pos==='WR'?['Receiving Yards','Receptions']:['Rush Yards','Receptions']).filter((m,i,a)=>a.indexOf(m)===i);
+  if(nba) return [[pos,`${pos}s`],['*','all positions']].map(([ps,lbl])=>vsTypeBlock(team,p,mk,ps,lbl)).join('');
+  return vsTypeBlock(team,p,mk,pos,null);
+}
+function vsTypeBlock(team,p,mk,pos,lbl){
+  const nba=PL.sport==='nba';
   const mine=m=>typeOf(p.player,pos,m);
   const blocks=mk.map(m=>{ const st=typeStats(team,pos,m), types=Object.keys(st); if(!types.length) return '';
+    const tb=(t)=>typeBase(pos,m,t);
     types.sort((a,b)=>(st[b].cur.n-st[a].cur.n));
     return `<div style="margin-top:8px"><div class="pl-sub" style="margin-bottom:4px"><b style="color:var(--text)">${E(m)}</b></div>
-      <div class="pl-scroll"><table class="pl-tbl"><tr><th>Type</th><th>2026 overs</th><th>Median vs line</th><th>League</th><th>2025–26</th></tr>
-      ${types.map(t=>{ const s=st[t], b=typeBase(pos,m,t), r=s.cur.n?s.cur.overs/s.cur.n:null, cls=r==null||b==null||s.cur.n<3?'':r-b>=.15?'good':r-b<=-.15?'bad':'';
+      <div class="pl-scroll"><table class="pl-tbl"><tr><th>Type</th><th>${nba?'Last-20 overs':'2026 overs'}</th><th>Median vs line</th><th>League</th><th>${nba?'All rows':'2025–26'}</th></tr>
+      ${types.map(t=>{ const s=st[t], b=tb(t), r=s.cur.n?s.cur.overs/s.cur.n:null, cls=r==null||b==null||s.cur.n<3?'':r-b>=.15?'good':r-b<=-.15?'bad':'';
         return `<tr${mine(m)===t?' style="background:rgba(79,124,255,.12)"':''}><td>${E(TYPE_LBL(t))}${mine(m)===t?' ◀':''}</td>
           <td class="${cls}">${s.cur.n?`${s.cur.overs}/${s.cur.n}`:'–'}</td><td class="${s.cur.med>0?'good':s.cur.med<0?'bad':''}">${s.cur.med==null?'–':(s.cur.med>0?'+':'')+(+s.cur.med).toFixed(1)}</td>
           <td class="mut">${b==null?'–':Math.round(b*100)+'%'}</td><td class="mut">${s.all.overs}/${s.all.n}</td></tr>`; }).join('')}
       </table></div></div>`; }).join('');
   if(!blocks.trim()) return '';
-  return `<div class="pl-card"><p class="pl-h">${E(team)} vs ${pos} types · result vs each player's own line</p>${blocks}
-    <div class="pl-note">Overs = players of that type who beat their prop line against ${E(team)}. Median vs line = typical result minus the line. League = how often that type goes over vs all defenses this season. Small samples early in the year: treat 2–3 games as a hint, not a fact.${pos==='WR'?' WR types from Razzball (share of receiving production from the slot).':' RB role from carries/targets per game; run style from the run-lane chart.'}</div></div>`;
+  return `<div class="pl-card"><p class="pl-h">${E(team)} vs ${nba?`archetypes · ${lbl}`:pos+' types'} · result vs each player's own line</p>${blocks}
+    <div class="pl-note">Overs = players of that type who beat their prop line against ${E(team)}. Median vs line = typical result minus the line. League = how often that type goes over vs all defenses ${nba?'on this slate':'this season'}. Small samples: treat 2–3 rows as a hint, not a fact.${nba?` Rows = ${E(team)}'s last 20 games. Archetypes come from each player's play-type mix (props.cash / Synergy).`:pos==='WR'?' WR types from Razzball (share of receiving production from the slot).':' RB role from carries/targets per game; run style from the run-lane chart.'}</div></div>`;
 }
 function scoreProp(p){
   if(p._s) return p._s;
@@ -1890,7 +1904,7 @@ function reasons(p){
   else if(h['2026']!=null&&n['2026']) out.push([s.dots.hist, `${Math.round(h['2026']*n['2026']/100)}/${n['2026']} this year`]);
   if(s.pProj!=null) out.push([s.dots.proj, s.td? `Proj ${pct(s.pProj)} to ${PL.sport==='nba'?'hit':'score'}` : `Proj ${(+p.projection).toFixed(1)} vs ${p.line}`]);
   if(p.dvp!=null) out.push([s.dots.match, `${p.opp} ${ord(p.dvp)} vs ${p.pos}s${isQ1(p)?' in the 1Q':''}`]);
-  if(s.tsig){ const t=s.tsig; out.push([t.d>=.1?1:t.d<=-.1?-1:0, `${p.opp} vs ${lowerFirst(TYPE_LBL(t.ty))}: ${t.overs}/${t.n} over`]); }
+  if(s.tsig){ const t=s.tsig; out.push([t.d>=.1?1:t.d<=-.1?-1:0, `${p.opp} vs ${lowerFirst(TYPE_LBL(t.ty))}${PL.sport==='nba'&&t.scope!=='*'?' ('+p.pos+')':''}: ${t.overs}/${t.n} over`]); }
   if(s.thin) out.push([-1,'Small sample']);
   if(s.longshot) out.push([0,'Longshot']);
   return out.map(([v,t])=>`<span class="pl-why ${v>0?'g':v<0?'r':''}">${E(t)}</span>`).join('');
@@ -1989,7 +2003,26 @@ function screener(){
     <p><b>1st quarter</b> props use the player's last 10 first quarters and what the defense allows to his position in the first quarter. On 0.5 and 1.5 lines props.cash has no usable projection, so those top out at B.</p>
   </details>`;
 }
+function typeCardNBA(p){
+  const ty=typeOf(p.player,p.pos,p.market); if(!ty) return '';
+  const r=roleOf(p.player), mk=[p.market].concat(['Points','Pts + Reb + Ast']).filter((m,i,a)=>a.indexOf(m)===i), used=typeSignal(p);
+  const block=(m,pos,lbl)=>{
+    const L=((PL.data.teams[p.opp]||{}).vsPosLog||{}), rows=(pos==='*'?Object.values(L).flatMap(x=>x[m]||[]):((L[pos]||{})[m]||[])).filter(x=>typeOf(x.player,null,m)===ty);
+    const st=typeStats(p.opp,pos,m)[ty], b=typeBase(pos,m,ty);
+    if(!rows.length||!st) return `<div class="pl-sub" style="padding:4px 0">${E(m)} · ${lbl}: no ${E(lowerFirst(TYPE_LBL(ty)))} with a prop line vs ${E(p.opp)} in their last 20 games.</div>`;
+    const a=st.all, rate=a.n?a.overs/a.n:null, cls=rate==null||b==null?'':rate-b>=.15?'good':rate-b<=-.15?'bad':'';
+    return `<div style="margin-top:8px"><div class="pl-kv" style="border:0;padding:2px 0"><span><b>${E(m)}</b> · ${lbl}</span><b class="${cls}">${a.overs}/${a.n} over</b></div>
+      <div class="pl-sub">median ${a.med>0?'+':''}${(+a.med).toFixed(1)} vs the line · slate avg ${b==null?'–':Math.round(b*100)+'%'} for ${E(lowerFirst(TYPE_LBL(ty)))}</div>
+      <div class="pl-scroll" style="margin-top:4px"><table class="pl-tbl"><tr><th>Player</th><th>Result</th><th>Line</th><th>Game</th></tr>
+      ${rows.slice(0,12).map(x=>`<tr><td>${E(x.player)}</td><td class="${x.hit?'good':'bad'}">${x.hit?'▲':'▼'} ${E(x.result)}</td><td>${E(x.line)}</td><td>${E(x.opp)} ${E(x.date)}</td></tr>`).join('')}
+      </table></div></div>`; };
+  return `<div class="pl-card"><p class="pl-h">${E(p.opp)} vs ${E(TYPE_LBL(ty))} · ${E(p.player.split(' ').slice(-1)[0])} is a ${E(ty.toLowerCase())}</p>
+    <div class="pl-sub">${E((r.mix||[]).map(([k,v])=>`${v}% ${PT_LBL[k]||k}`).join(' · '))} of his possessions</div>
+    ${mk.map(m=>block(m,p.pos,`${p.pos}s`)+block(m,'*','all positions')).join('')}
+    <div class="pl-note">${used?`Used in the grade (${used.n} ${used.scope==='*'?'rows across all positions':'rows at '+E(p.pos)}).`:'Not used in the grade yet: fewer than 4 matching rows. Shown so you can judge it yourself.'} Rows are ${E(p.opp)}'s last 20 games; each player is judged against his own line.</div></div>`;
+}
 function typeCard(p){
+  if(PL.sport==='nba') return typeCardNBA(p);
   const ty0=typeOf(p.player,p.pos,p.market); if(!ty0) return '';
   const r=roleOf(p.player), mk=[p.market].concat(p.pos==='WR'?['Receiving Yards','Receptions']:(RUSH_ONLY.has(p.market)?['Rush Yards']:['Receptions'])).filter((m,i,a)=>a.indexOf(m)===i);
   const blocks=mk.map(m=>{ const ty=typeOf(p.player,p.pos,m); if(!ty) return '';
