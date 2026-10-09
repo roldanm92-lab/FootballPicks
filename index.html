@@ -1600,8 +1600,10 @@ const implied = o=> o==null?null:(o<0? -o/(-o+100) : 100/(o+100))*100;
 const starKey = p=>[p.player,p.market,p.line,p.side].join('|');
 function saveStars(){ try{ localStorage.setItem('nfl_propplays', JSON.stringify([...PL.stars])); }catch(e){} }
 const RANK_KEY = {'Anytime TD':'td','Rush Yards':'rshY','Receiving Yards':'recY','Receptions':'rec','Rush Attempts':'rshA',
-  'Longest Rush':'rshLng','Longest Reception':'recLng','Targets':'tgt','Rush + Rec Yards':'rrY','1Q Anytime TD':'q1td','Pass Yards':'passY','Pass TD':'passTD'};
-const RANK_LBL = {recY:'Rec yds',rec:'Rec',td:'TD',rshY:'Rush yds',rshA:'Rush att',rshLng:'Rush lng',rrY:'R+R yds',recLng:'Rec lng',tgt:'Targets',q1td:'1Q TD',passY:'Pass yds',passTD:'Pass TD'};
+  'Longest Rush':'rshLng','Longest Reception':'recLng','Targets':'tgt','Rush + Rec Yards':'rrY','1Q Anytime TD':'q1td','Pass Yards':'passY','Pass TD':'passTD',
+  '1Q Rec Yards':'q1recY','1Q Rush Yards':'q1rshY','1Q Pass Yards':'q1passY'};
+const RANK_LBL = {recY:'Rec yds',rec:'Rec',td:'TD',rshY:'Rush yds',rshA:'Rush att',rshLng:'Rush lng',rrY:'R+R yds',recLng:'Rec lng',tgt:'Targets',q1td:'1Q TD',passY:'Pass yds',passTD:'Pass TD',q1recY:'1Q rec yds',q1rshY:'1Q rush yds',q1passY:'1Q pass yds'};
+const isQ1 = p=> /^1Q /.test(p.market||p);
 const rankCls = r=> r==null?'mut': r<=10?'bad': r>=23?'good':'';   /* 1 = toughest defense */
 const gameOf = id=> (PL.data.games||[]).find(g=>g.id===id);
 const lineTxt = g=>{ if(!g) return ''; return `${g.fav} ${g.spread} · O/U ${g.total}`; };
@@ -1618,26 +1620,30 @@ function signals(p){
   if(p.h2h!=null && (n.H2H==null || n.H2H>=2)){ if(p.h2h<=34) A.push(`H2H hit rate ${p.h2h}%${tag('H2H')}`); else if(p.h2h>=67) F.push(`H2H hit rate ${p.h2h}%${tag('H2H')}`); }
   if(p.tdProb!=null && imp!=null){ const d=p.tdProb-imp;
     if(d>=5) F.push(`props.cash TD probability ${p.tdProb}% vs ${imp.toFixed(0)}% implied`); else if(d<=-5) A.push(`props.cash TD probability ${p.tdProb}% vs ${imp.toFixed(0)}% implied`); }
-  else if(p.edge!=null && p.projection!=null){ const rel=Math.abs(p.edge)/Math.max(p.line,1);
+  else if(p.edge!=null && p.projection!=null && !(isQ1(p)&&p.line<2.5)){ const rel=Math.abs(p.edge)/Math.max(p.line,1);
     if(rel>=.05) (p.edge>0?F:A).push(`props.cash projects ${p.projection} vs the ${p.line} line`); }
   if(p.matchupRating!=null && p.matchupRating>=0){ if(p.matchupRating>=70) F.push(`props.cash matchup rating ${p.matchupRating}/100`); else if(p.matchupRating<=30) A.push(`props.cash matchup rating ${p.matchupRating}/100`); }
   const rk=RANK_KEY[p.market], dv=((opp.defVsPos||{})[p.pos]||{}).overall;
-  const r = rk && dv && dv[rk]!=null ? dv[rk] : p.dvp, lbl = rk && dv && dv[rk]!=null ? `${p.pos} ${RANK_LBL[rk]}` : `${p.pos} ${p.market.toLowerCase()} (DvP)`;
+  const r = rk && dv && dv[rk]!=null ? dv[rk] : p.dvp, lbl = rk && dv && dv[rk]!=null ? `${p.pos} ${RANK_LBL[rk]}` : `${p.pos} ${p.market.toLowerCase().replace(/^1q/,'1Q')} (DvP)`;
   if(r!=null){ if(r<=10) A.push(`${p.opp} ranks ${ord(r)} vs ${lbl} (tough)`); if(r>=23) F.push(`${p.opp} ranks ${ord(r)} vs ${lbl} (soft)`); }
   const lg=(((opp.vsPosLog||{})[p.pos]||{})[p.market])||[], cur=lg.filter(x=>x.season===Math.max(...lg.map(y=>y.season)));
   if(cur.length){
     if(/Anytime TD/.test(p.market)){ const by={}; cur.forEach(x=>{ const k=x.opp+x.date; by[k]=by[k]||x.hit; });
       const nG=Object.keys(by).length, hG=Object.values(by).filter(Boolean).length, t=`${p.pos}s scored vs ${p.opp} in ${hG} of ${nG} games this season`;
       if(nG>=3){ if(hG/nG<=.34) A.push(t); else if(hG/nG>=.67) F.push(t); } }
-    else { const o=cur.filter(x=>x.hit).length, t=`${p.pos}s went over their ${p.market.toLowerCase()} line vs ${p.opp} ${o} of ${cur.length} times this season`;
+    else { const o=cur.filter(x=>x.hit).length, t=`${p.pos}s went over their ${p.market.toLowerCase().replace(/^1q/,'1Q')} line vs ${p.opp} ${o} of ${cur.length} times this season`;
       if(cur.length>=4){ if(o/cur.length<=.34) A.push(t); else if(o/cur.length>=.67) F.push(t); } }
   }
   const REL={'Anytime TD':['TDs/g','Rush att/g','Targets/g'],'1Q Anytime TD':['TDs/g'],'Rush Yards':['Rush yds/g','Rush att/g'],'Rush Attempts':['Rush att/g'],'Longest Rush':['Rush yds/g','Rush att/g'],
     'Receiving Yards':['Rec yds/g','Receptions/g','Targets/g'],'Receptions':['Receptions/g','Targets/g'],'Targets':['Targets/g'],'Longest Reception':['Rec yds/g','Targets/g'],
-    'Rush + Rec Yards':['Rush yds/g','Rec yds/g'],'Pass Yards':['Pass yds/g'],'Pass + Rush Yards':['Pass yds/g','Rush yds/g'],'Pass TD':['Pass TD/g'],'Pass Completions':['Pass yds/g'],'Pass Attempts':['Pass yds/g']}[p.market]||[];
+    'Rush + Rec Yards':['Rush yds/g','Rec yds/g'],'Pass Yards':['Pass yds/g'],'Pass + Rush Yards':['Pass yds/g','Rush yds/g'],'Pass TD':['Pass TD/g'],'Pass Completions':['Pass yds/g'],'Pass Attempts':['Pass yds/g'],
+    '1Q Rec Yards':['Rec yds/g','Targets/g'],'1Q Rush Yards':['Rush yds/g','Rush att/g'],'1Q Pass Yards':['Pass yds/g']}[p.market]||[];
   (pl.trends||[]).filter(t=>REL.includes(t.stat)).forEach(t=>{ if(t.prev==null||!t.prev) return; const d=(t.now-t.prev)/Math.max(t.prev,0.1);
     if(d>=.2) F.push(`${t.stat} up: ${t.now} vs ${t.prev} last year`); else if(d<=-.2) A.push(`${t.stat} down: ${t.now} vs ${t.prev} last year`); });
   const ts=typeSignal(p); if(ts){ const t=`${TYPE_LBL(ts.ty)} went over their line vs ${p.opp} ${ts.overs} of ${ts.n} times this season (median ${ts.med>0?'+':''}${(+ts.med).toFixed(1)}; league ${Math.round(ts.base*100)}%)`; if(ts.d>=.1) F.push(t); else if(ts.d<=-.1) A.push(t); }
+  if(p.recent&&p.recent.length>=5){ const o=p.recent.filter(v=>v>p.line).length, t=`Over ${p.line} in ${o} of his last ${p.recent.length} first quarters (avg ${(p.recent.reduce((a,v)=>a+v,0)/p.recent.length).toFixed(1)})`;
+    if(o/p.recent.length>=.7) F.push(t); else if(o/p.recent.length<=.4) A.push(t); }
+  if(isQ1(p)&&rk&&dv){ const al=((((opp.defVsPos||{})[p.pos]||{}).values||{}).overall||{})[rk]; if(al!=null&&p.line>=2.5){ const t=`${p.opp} allows ${(+al).toFixed(1)} ${RANK_LBL[rk]} per game to ${p.pos}s`; if(al>=p.line*1.25) F.push(t); else if(al<=p.line*.75) A.push(t); } }
   const g=gameOf(p.game); if(g && g.fav===p.team && Math.abs(g.spread)>=7 && /TD|Rush/.test(p.market)) F.push(`${p.team} is a ${Math.abs(g.spread)}-pt favorite (positive game script)`);
   (pl.roster||[]).forEach(r=>{ if(r[1]===p.pos && /^out$/i.test(r[2])) F.push(`Teammate ${r[1]} ${r[0]} is out`); });
   return {F,A};
@@ -1706,6 +1712,7 @@ function projOver(p){
   const mk=p.marketKey, pr=p.projection;
   if(TDP.has(mk)) return p.tdProb!=null? p.tdProb/100 : (pr!=null&&pr<=1? pr : null);
   if(pr==null||pr<=0) return null;
+  if(/^q1/.test(mk) && p.line<2.5) return null;
   if(POIS.has(mk)) return poisOver(pr, p.line);
   const yd=/Yards|Lng|Points/.test(mk), sd=Math.max((CV[mk]||.5)*pr, yd?5:1.2); return 1-phi((p.line-pr)/sd);
 }
@@ -1806,8 +1813,9 @@ const GROUPS = {
   td:['Anytime TD','1Q Anytime TD','Pass TD'],
   rush:['Rush Yards','Rush Attempts','Longest Rush','1Q Rush Yards','Rush + Rec Yards'],
   rec:['Receiving Yards','Receptions','Targets','Longest Reception','1Q Rec Yards','Rush + Rec Yards'],
-  pass:['Pass Yards','Pass Completions','Pass Attempts','Interceptions Thrown','Longest Pass','Pass + Rush Yards','1Q Pass Yards']};
-const GROUP_LBL = [['','All'],['td','TDs'],['rush','Rushing'],['rec','Receiving'],['pass','Passing'],['other','Kick/Def']];
+  pass:['Pass Yards','Pass Completions','Pass Attempts','Interceptions Thrown','Longest Pass','Pass + Rush Yards','1Q Pass Yards'],
+  q1:['1Q Rec Yards','1Q Rush Yards','1Q Pass Yards','1Q Anytime TD']};
+const GROUP_LBL = [['','All'],['q1','1st Qtr'],['td','TDs'],['rush','Rushing'],['rec','Receiving'],['pass','Passing'],['other','Kick/Def']];
 const inGroup = (p,g)=> !g ? true : g==='other' ? !Object.values(GROUPS).some(a=>a.includes(p.market)) : (GROUPS[g]||[]).includes(p.market);
 const ODDS_LBL = [['','Any odds'],['fav','−150 or shorter'],['even','−149 to +149'],['plus','+150 to +600'],['long','+600 and up']];
 const inOdds = (o,k)=> !k?true : k==='fav'?o<=-150 : k==='even'?(o>-150&&o<150) : k==='plus'?(o>=150&&o<=600) : o>600;
@@ -1831,10 +1839,11 @@ function dotsHtml(s){
 }
 function reasons(p){
   const s=scoreProp(p), h=p.hit||{}, n=p.hitN||{}, out=[];
-  if(h.L10!=null) out.push([s.dots.hist, `L10 ${Math.round(h.L10/10)}/10 over`]);
+  if(p.recent&&p.recent.length) out.push([s.dots.hist, `1Q: ${p.recent.filter(v=>v>p.line).length}/${p.recent.length} over · avg ${(p.recent.reduce((a,v)=>a+v,0)/p.recent.length).toFixed(1)}`]);
+  else if(h.L10!=null) out.push([s.dots.hist, `L10 ${Math.round(h.L10/10)}/10 over`]);
   else if(h['2026']!=null&&n['2026']) out.push([s.dots.hist, `${Math.round(h['2026']*n['2026']/100)}/${n['2026']} this year`]);
   if(s.pProj!=null) out.push([s.dots.proj, s.td? `Proj ${pct(s.pProj)} to score` : `Proj ${(+p.projection).toFixed(1)} vs ${p.line}`]);
-  if(p.dvp!=null) out.push([s.dots.match, `${p.opp} ${ord(p.dvp)} vs ${p.pos}s`]);
+  if(p.dvp!=null) out.push([s.dots.match, `${p.opp} ${ord(p.dvp)} vs ${p.pos}s${isQ1(p)?' in the 1Q':''}`]);
   if(s.tsig){ const t=s.tsig; out.push([t.d>=.1?1:t.d<=-.1?-1:0, `${p.opp} vs ${lowerFirst(TYPE_LBL(t.ty))}: ${t.overs}/${t.n} over`]); }
   if(s.thin) out.push([-1,'Small sample']);
   if(s.longshot) out.push([0,'Longshot']);
@@ -1931,6 +1940,7 @@ function screener(){
     <span class="pl-dot g"></span> <b>Matchup</b>: defense rank vs the position (1st = toughest) and props.cash's matchup rating.</p>
     <p>Dots: green = supports the over, red = argues against, gray = neutral. <b>EV</b> = expected return per $1 at the listed price.</p>
     <p><b>A</b>: EV 10%+, projection agrees, 2+ green, no red, real sample. <b>B</b>: EV 5%+, 2+ green, no red. <b>C</b>: EV 2%+, at least one green and projection not against. Over +600 caps at C. Overs only for now.</p>
+    <p><b>1st quarter</b> props use the player's last 10 first quarters and what the defense allows to his position in the first quarter. On 0.5 and 1.5 lines props.cash has no usable projection, so those top out at B.</p>
   </details>`;
 }
 function typeCard(p){
@@ -1967,7 +1977,7 @@ function gradeBox(p){
 
 function teamPanel(abbr, pos, home){
   const t=PL.data.teams[abbr]; if(!t||!t.defVsPos||!t.defVsPos[pos]) return '';
-  const d=t.defVsPos[pos], order={QB:['passY','passTD','rshY','td'],RB:['rshY','rshA','td','rec','recY','tgt','rrY','rshLng','recLng','q1td'],WR:['recY','rec','tgt','td','recLng','q1td'],TE:['recY','rec','tgt','td','recLng','q1td']};
+  const d=t.defVsPos[pos], order={QB:['passY','passTD','rshY','td','q1passY','q1rshY'],RB:['rshY','rshA','td','rec','recY','tgt','rrY','rshLng','recLng','q1rshY','q1recY','q1td'],WR:['recY','rec','tgt','td','recLng','q1recY','q1td'],TE:['recY','rec','tgt','td','recLng','q1recY','q1td']};
   const keys=(order[pos]||Object.keys(d.overall)).filter(k=>['overall','away','home'].some(s=>d[s]&&d[s][k]!=null));
   return `<div class="pl-card"><p class="pl-h">${E(abbr)} defense vs ${E(pos)} · 2026 rank (1st = toughest)</p><div class="pl-scroll"><table class="pl-tbl">
     <tr><th></th>${keys.map(k=>`<th>${RANK_LBL[k]||k}</th>`).join('')}</tr>
@@ -2008,6 +2018,9 @@ function byGame(){
   h+=`<div class="pl-card" style="padding:4px 8px"><p class="pl-h" style="padding:8px 4px 0">Props in this game</p>${P.length?P.map(p=>propRow(p)).join(''):'<div class="pl-sub" style="padding:12px">No props captured for this game yet.</div>'}</div>`;
   return h;
 }
+function q1Log(p){ if(!p.recent||!p.recent.length) return null; const n=p.recent.length; return p.recent.slice().reverse().map((v,i)=>[i===n-1?'last':'G-'+(n-1-i),'',v]); }
+function q1Note(p){ const o=p.recent?p.recent.filter(v=>v>p.line).length:0, t=PL.data.teams[p.opp]||{}, rk=RANK_KEY[p.market], d=((t.defVsPos||{})[p.pos]||{}), al=((d.values||{}).overall||{})[rk], r=(d.overall||{})[rk];
+  return `<div class="pl-note">${p.recent?`${o} of ${p.recent.length} over ${p.line}, newest on the right. `:''}${al!=null?`${E(p.opp)} allows ${(+al).toFixed(1)} ${RANK_LBL[rk]} per game to ${E(p.pos)}s${r!=null?` (${ord(r)}; 1st = toughest)`:''}.`:''} ${p.line<2.5?'A 0.5 or 1.5 line means any catch or carry that gains yards wins, so props.cash\'s projection isn\'t used for this one.':''}</div>`; }
 function playerCard(){
   const p=PL.prop; if(!p) return `<div class="pl-card pl-sub">Pick a prop from the screener or a game to open its card.</div>`;
   const pl=PL.data.players[p.player], g=gameOf(p.game), h=p.hitAll||p.hit||{}, imp=implied(p.odds);
@@ -2027,9 +2040,9 @@ function playerCard(){
     <div class="pl-for"><b class="good">For (${sg.F.length})</b><br>${sg.F.map(E).join('<br>')||'<span class="mut">Nothing yet</span>'}</div>
     <div class="pl-against"><b class="bad">Against (${sg.A.length})</b><br>${sg.A.map(E).join('<br>')||'<span class="mut">Nothing yet</span>'}</div></div></div>`;
   if(PL.cardTab==='opp') return s+opponentView(p,g);
-  if(!pl) return s+`<div class="pl-card pl-sub">Full player detail (charts, trends) isn't in this data yet. Only screener fields were captured for this prop. The ${E(p.opp)} defense tab shows what's known about the opponent.</div>`;
-  const lg=(pl.log||{})[p.market];
-  if(lg) s+=`<div class="pl-card"><p class="pl-h">Last ${lg.length} games vs ${p.line}</p>${hitChart(lg,p.line)}</div>`;
+  if(!pl) return s+(q1Log(p)?`<div class="pl-card"><p class="pl-h">Last ${p.recent.length} first quarters vs ${p.line}</p>${hitChart(q1Log(p),p.line)}${q1Note(p)}</div>`:'')+`<div class="pl-card pl-sub">Full player detail (charts, trends) isn't in this data yet. Only screener fields were captured for this prop. The ${E(p.opp)} defense tab shows what's known about the opponent.</div>`;
+  const lg=(pl.log||{})[p.market]||q1Log(p);
+  if(lg) s+=`<div class="pl-card"><p class="pl-h">Last ${lg.length} ${isQ1(p)?'first quarters':'games'} vs ${p.line}</p>${hitChart(lg,p.line)}${isQ1(p)?q1Note(p):''}</div>`;
   s+=`<div class="pl-grid">
     <div class="pl-card"><p class="pl-h">Rushing chart · vs ${E(p.opp)}</p>${rushChart(pl,p)}</div>
     <div class="pl-card"><p class="pl-h">Receiving chart · vs ${E(p.opp)}</p>${recChart(pl,p)}</div></div>`;
