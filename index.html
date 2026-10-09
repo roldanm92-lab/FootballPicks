@@ -188,6 +188,55 @@
   .pl-svg{width:100%;height:auto;display:block;}
   .pl-back{background:none;border:0;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:6px;}
   .pl-note{font-size:11px;color:var(--sub);margin-top:6px;}
+  /* ===== Props Lab: best plays ===== */
+  .pl-filters{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:8px;margin:6px 0;}
+  .pl-chiprow{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;}
+  .pl-chiprow::-webkit-scrollbar{display:none;}
+  .pl-chipb{flex-shrink:0;padding:6px 11px;border-radius:14px;border:1px solid var(--border);background:var(--panel2);font-size:12px;color:var(--sub);cursor:pointer;white-space:nowrap;}
+  .pl-chipb.on{background:rgba(79,124,255,.2);border-color:var(--accent);color:var(--text);font-weight:600;}
+  .pl-toggles{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--sub);margin-top:8px;}
+  .pl-toggles label{display:flex;gap:6px;align-items:center;cursor:pointer;}
+  .pl-toggles input{accent-color:var(--accent);width:15px;height:15px;}
+  .pl-grade{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;font-weight:800;font-size:13px;flex-shrink:0;background:var(--panel2);color:var(--sub);border:1px solid var(--border);}
+  .pl-grade.big{width:38px;height:38px;font-size:19px;border-radius:9px;}
+  .pl-grade.gA{background:rgba(34,201,138,.18);color:var(--accent2);border-color:rgba(34,201,138,.6);}
+  .pl-grade.gB{background:rgba(79,124,255,.18);color:#8fb0ff;border-color:rgba(79,124,255,.6);}
+  .pl-grade.gC{background:rgba(242,169,60,.12);color:var(--warn);border-color:rgba(242,169,60,.45);}
+  .pl-tops{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-bottom:12px;}
+  .pl-top{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;cursor:pointer;}
+  .pl-top:hover{border-color:var(--accent);}
+  .pl-top-h{display:flex;gap:10px;align-items:center;}
+  .pl-top-bet{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin:8px 0 6px;font-size:14px;}
+  .pl-odds{background:var(--panel2);border-radius:6px;padding:1px 7px;font-weight:700;font-size:13px;}
+  .pl-odds-s{color:var(--text);}
+  .pl-ev{font-weight:800;font-size:14px;margin-left:auto;}
+  .pl-pbar{margin:4px 0 2px;}
+  .pl-ptrack{position:relative;height:8px;border-radius:4px;background:var(--panel2);}
+  .pl-pfill{position:absolute;top:0;height:8px;border-radius:4px;}
+  .pl-pfill.up{background:rgba(34,201,138,.55);} .pl-pfill.dn{background:rgba(242,85,74,.5);}
+  .pl-ptick{position:absolute;top:-3px;width:2px;height:14px;background:var(--text);margin-left:-1px;border-radius:1px;}
+  .pl-pdot{position:absolute;top:-2px;width:12px;height:12px;border-radius:50%;margin-left:-6px;border:2px solid var(--panel);}
+  .pl-pdot.up{background:var(--accent2);} .pl-pdot.dn{background:var(--bad);}
+  .pl-plbl{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:4px;}
+  .pl-whys{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+  .pl-why{font-size:11px;padding:3px 8px;border-radius:10px;background:var(--panel2);color:var(--sub);border:1px solid var(--border);}
+  .pl-why.g{color:var(--accent2);border-color:rgba(34,201,138,.4);} .pl-why.r{color:var(--bad);border-color:rgba(242,85,74,.4);}
+  .pl-why.more,.pl-more{color:var(--accent);cursor:pointer;}
+  .pl-dots{display:inline-flex;gap:3px;align-items:center;vertical-align:middle;}
+  .pl-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#4a5266;}
+  .pl-dot.g{background:var(--accent2);} .pl-dot.r{background:var(--bad);}
+  .pl-listhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:14px 2px 6px;}
+  .pl-listhead select{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px;font-size:12px;}
+  .pl-row2{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .pl-row2:last-child{border-bottom:0;}
+  .pl-row2:hover{background:rgba(255,255,255,.03);}
+  .pl-mini{display:flex;gap:8px;align-items:center;margin-top:5px;}
+  .pl-mini .pl-ptrack{flex:1;max-width:150px;height:6px;}
+  .pl-mini .pl-pfill{height:6px;} .pl-mini .pl-ptick{height:12px;}
+  .pl-rt{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+  .pl-rt .pl-ev{margin:0;font-size:13px;}
+  .pl-how summary{cursor:pointer;font-size:13px;color:var(--sub);font-weight:600;}
+  .pl-how p{font-size:12px;color:var(--sub);line-height:1.6;margin:8px 0 0;}
 </style>
 </head>
 <body>
@@ -1532,14 +1581,16 @@ document.addEventListener('DOMContentLoaded', init);
 /* =========================================================================
    PROPS LAB — research tab for finding your own NFL props (props.cash data).
    Data: window.EMBEDDED_PROPS (or props.json loaded via Data tab).
-   Views: Screener (whole slate) · By game · Player card (with rush/receiving charts).
+   Views: Best plays (graded board) · By game · Player card (with rush/receiving charts).
    ========================================================================= */
 (function(){
 const PL = {data:null, view:'screener', sport:'nfl', player:null, prop:null, game:null,
-  f:{search:'', market:'', pos:'', game:'', starred:false}, sort:'edge',
-  rushMetric:'Yards', recMetric:'Yards', cardTab:'player', limit:150, logOpen:false, stars:new Set()};
+  f:{search:'', market:'', pos:'', game:'', starred:false, group:'', odds:'', grade:'ABC', onePer:true, showStarted:false}, sort:'grade',
+  rushMetric:'Yards', recMetric:'Yards', cardTab:'player', limit:100, logOpen:false, stars:new Set()};
 try{ PL.stars = new Set(JSON.parse(localStorage.getItem('nfl_propplays')||'[]')); }catch(e){}
 try{ const v=localStorage.getItem('props_view'); if(v) PL.view=v; }catch(e){}
+try{ const sf=JSON.parse(localStorage.getItem('props_filters')||'null'); if(sf){ ['group','odds','grade','pos','onePer'].forEach(k=>{ if(k in sf) PL.f[k]=sf[k]; }); if(sf.sort) PL.sort=sf.sort; } }catch(e){}
+function saveFilters(){ try{ localStorage.setItem('props_filters', JSON.stringify({group:PL.f.group,odds:PL.f.odds,grade:PL.f.grade,pos:PL.f.pos,onePer:PL.f.onePer,sort:PL.sort})); }catch(e){} }
 const q = s=>document.querySelector(s);
 const E = s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ord = n=>{ if(n==null||isNaN(n)) return '–'; const s=['th','st','nd','rd'],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
@@ -1640,46 +1691,199 @@ function recChart(pl,p){
   s+=`<div class="pl-note">props.cash edge vs ${E(p.opp)} at each depth. ${th?`▲ green at ${th.up}+ favors the player; ▼ red at ${th.down} or below favors the defense.`:''} Gray dash = no targets there.</div>`;
   return s;
 }
-function filtered(){
-  const f=PL.f; let rows=(PL.data.props||[]).slice();
-  if(f.search){ const s=f.search.toLowerCase(); rows=rows.filter(p=>(p.player+' '+p.team+' '+p.opp+' '+p.market).toLowerCase().includes(s)); }
-  if(f.market) rows=rows.filter(p=>p.market===f.market);
-  if(f.pos) rows=rows.filter(p=>p.pos===f.pos);
-  if(f.game) rows=rows.filter(p=>p.game===f.game);
-  if(f.starred) rows=rows.filter(p=>PL.stars.has(starKey(p)));
-  const val={edge:p=>p.edge==null?-99:p.edge, hit:p=>(p.hit||{})['2026']||0, dvp:p=>p.dvp==null?0:p.dvp,
-    value:p=>{const i=implied(p.odds); return i==null?-99:((p.hit||{})['2026']||0)-i;}}[PL.sort];
-  rows.sort((a,b)=>val(b)-val(a));
+/* ---------- play score: model probability vs the book ---------- */
+const POIS = new Set(['receptions','targets','passTD','passInt','sacks','kickingFG','kickingPAT','interceptions','tackles','assists','tacklesAndAssists']);
+const CV = {rushYards:.5,recYards:.65,rushAndRecYards:.45,passYards:.25,passAndRushYards:.25,rushAttempts:.3,passCompletions:.18,passAttempts:.15,
+  recLng:.6,rushLng:.65,passLng:.3,kickingPoints:.45,q1RushYards:.8,q1RecYards:1,q1PassYards:.5};
+const TDP = new Set(['anytimeTD','q1AnytimeTD']);
+function phi(z){ const t=1/(1+.2316419*Math.abs(z)), d=.3989423*Math.exp(-z*z/2), pr=d*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return z>0?1-pr:pr; }
+function poisOver(lam,line){ const k=Math.floor(line)+1; let term=Math.exp(-lam), cdf=0; for(let i=0;i<k;i++){ cdf+=term; term*=lam/(i+1); } return Math.max(0,Math.min(1,1-cdf)); }
+const payout = o=> o>0? o/100 : 100/-o;
+const logit = p=>Math.log(p/(1-p)), unlogit = x=>1/(1+Math.exp(-x)), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function projOver(p){
+  const mk=p.marketKey, pr=p.projection;
+  if(TDP.has(mk)) return p.tdProb!=null? p.tdProb/100 : (pr!=null&&pr<=1? pr : null);
+  if(pr==null||pr<=0) return null;
+  if(POIS.has(mk)) return poisOver(pr, p.line);
+  const yd=/Yards|Lng|Points/.test(mk), sd=Math.max((CV[mk]||.5)*pr, yd?5:1.2); return 1-phi((p.line-pr)/sd);
+}
+function scoreProp(p){
+  if(p._s) return p._s;
+  const imp=implied(p.odds)/100, h=p.hit||{}, n=p.hitN||{}, td=TDP.has(p.marketKey);
+  // history: weighted hit rates, shrunk toward the book price so tiny samples can't dominate (harder for TDs)
+  let W=0, S=0; const add=(r,w)=>{ if(r!=null&&w>0){ S+=r/100*w; W+=w; } };
+  add(h['2026'], n['2026']||0); add(h.L10, 4); add(h.L20, 3); add(h['2025'], Math.min(n['2025']||0,17)*.35);
+  const K=td?14:6, pHist = W? (S+K*imp)/(W+K) : null, sample=(n['2026']||0)+Math.min(n['2025']||0,17)*.35;
+  const pProj = projOver(p);
+  const wP = pProj==null?0 : td?.7:.5, wH = pHist==null?0 : 1-(pProj==null?0:wP);
+  const blend = (wP+wH)? ((pProj||0)*wP+(pHist||0)*wH)/(wP+wH) : imp;
+  // respect the market: move only halfway from the book toward our blend, then nudge for matchup
+  let adj=0; const r=p.dvp, mr=(p.matchupRating!=null&&p.matchupRating>=0)?p.matchupRating:null;
+  if(r!=null) adj+=.2*(r-16.5)/15.5;
+  if(mr!=null) adj+=.12*(mr-50)/50;
+  const L=x=>logit(clamp(x,.01,.99));
+  const pModel = clamp(unlogit(L(imp)+.5*(L(blend)-L(imp))+adj), .01, .99);
+  const ev = pModel*payout(p.odds)-(1-pModel);
+  const thr = imp<.3 ? Math.max(.03, imp*.25) : .04;
+  const dot = v=> v==null?0 : v>imp+thr?1 : v<imp-thr?-1:0;
+  const soft=(r!=null&&r>=20)||(mr!=null&&mr>=65), tough=(r!=null&&r<=10)||(mr!=null&&mr<=35);
+  const dots = {hist:dot(pHist), proj:dot(pProj), match: soft&&!tough?1 : tough&&!soft?-1 : 0};
+  const green=Object.values(dots).filter(x=>x>0).length, red=Object.values(dots).filter(x=>x<0).length;
+  const thin = sample<3;
+  let grade = ev>=.10&&green>=2&&red===0&&dots.proj===1&&!thin ? 'A'
+            : ev>=.05&&green>=2&&red===0 ? 'B'
+            : ev>=.02&&green>=1&&dots.proj!==-1 ? 'C' : '';
+  const longshot = p.odds>600;
+  if(longshot) grade = (grade && dots.proj===1 && !thin) ? 'C' : '';
+  if(thin && grade==='B') grade='C';
+  return p._s={longshot, imp, pHist, pProj, pModel, blend, adj, ev, edge:pModel-imp, dots, green, red, grade, thin, sample, td};
+}
+
+/* ---------- best plays board ---------- */
+const GROUPS = {
+  td:['Anytime TD','1Q Anytime TD','Pass TD'],
+  rush:['Rush Yards','Rush Attempts','Longest Rush','1Q Rush Yards','Rush + Rec Yards'],
+  rec:['Receiving Yards','Receptions','Targets','Longest Reception','1Q Rec Yards','Rush + Rec Yards'],
+  pass:['Pass Yards','Pass Completions','Pass Attempts','Interceptions Thrown','Longest Pass','Pass + Rush Yards','1Q Pass Yards']};
+const GROUP_LBL = [['','All'],['td','TDs'],['rush','Rushing'],['rec','Receiving'],['pass','Passing'],['other','Kick/Def']];
+const inGroup = (p,g)=> !g ? true : g==='other' ? !Object.values(GROUPS).some(a=>a.includes(p.market)) : (GROUPS[g]||[]).includes(p.market);
+const ODDS_LBL = [['','Any odds'],['fav','−150 or shorter'],['even','−149 to +149'],['plus','+150 to +600'],['long','+600 and up']];
+const inOdds = (o,k)=> !k?true : k==='fav'?o<=-150 : k==='even'?(o>-150&&o<150) : k==='plus'?(o>=150&&o<=600) : o>600;
+const GRADE_LBL = [['A','A only'],['AB','A + B'],['ABC','A – C'],['all','Everything']];
+const started = p=>{ const g=gameOf(p.game); return !!(g&&g.time&&Date.parse(g.time)<=Date.now()); };
+const pct = x=> x==null?'–':Math.round(x*100)+'%';
+const sgn = x=> (x>0?'+':'')+x;
+
+function gradeBadge(s,big){ const g=s.grade||'–';
+  return `<span class="pl-grade g${s.grade||'0'}${big?' big':''}" title="Play grade">${g}</span>`; }
+function probBar(s){
+  const b=Math.round(s.imp*100), m=Math.round(s.pModel*100), up=m>=b;
+  return `<div class="pl-pbar" aria-label="Book ${b}%, model ${m}%">
+    <div class="pl-ptrack"><div class="pl-pfill ${up?'up':'dn'}" style="left:${Math.min(b,m)}%;width:${Math.max(Math.abs(m-b),1)}%"></div>
+      <div class="pl-ptick" style="left:${b}%"></div><div class="pl-pdot ${up?'up':'dn'}" style="left:${m}%"></div></div>
+    <div class="pl-plbl"><span>Book ${b}%</span><span class="${up?'good':'bad'}">Model ${m}%</span></div></div>`;
+}
+function dotsHtml(s){
+  const one=(k,l)=>`<span class="pl-dot ${s.dots[k]>0?'g':s.dots[k]<0?'r':''}" title="${l}"></span>`;
+  return `<span class="pl-dots" aria-label="${s.green} of 3 signals agree">${one('hist','History')}${one('proj','Projection')}${one('match','Matchup')}</span>`;
+}
+function reasons(p){
+  const s=scoreProp(p), h=p.hit||{}, n=p.hitN||{}, out=[];
+  if(h.L10!=null) out.push([s.dots.hist, `L10 ${Math.round(h.L10/10)}/10 over`]);
+  else if(h['2026']!=null&&n['2026']) out.push([s.dots.hist, `${Math.round(h['2026']*n['2026']/100)}/${n['2026']} this year`]);
+  if(s.pProj!=null) out.push([s.dots.proj, s.td? `Proj ${pct(s.pProj)} to score` : `Proj ${(+p.projection).toFixed(1)} vs ${p.line}`]);
+  if(p.dvp!=null) out.push([s.dots.match, `${p.opp} ${ord(p.dvp)} vs ${p.pos}s`]);
+  if(s.thin) out.push([-1,'Small sample']);
+  if(s.longshot) out.push([0,'Longshot']);
+  return out.map(([v,t])=>`<span class="pl-why ${v>0?'g':v<0?'r':''}">${E(t)}</span>`).join('');
+}
+function boardRows(){
+  const f=PL.f, P=(PL.data.props||[]);
+  let rows=P.filter(p=>{
+    if(!f.showStarted && started(p)) return false;
+    if(f.search){ const t=(p.player+' '+p.team+' '+p.opp+' '+p.market).toLowerCase(); if(!t.includes(f.search.toLowerCase())) return false; }
+    if(!inGroup(p,f.group)) return false;
+    if(f.market && p.market!==f.market) return false;
+    if(f.pos && p.pos!==f.pos) return false;
+    if(f.game && p.game!==f.game) return false;
+    if(!inOdds(p.odds,f.odds)) return false;
+    if(f.starred && !PL.stars.has(starKey(p))) return false;
+    return true; });
+  rows.forEach(scoreProp);
+  const GR={A:3,B:2,C:1}; const key={grade:p=>(GR[p._s.grade]||0)*10+p._s.ev, ev:p=>p._s.ev, edge:p=>p._s.edge, hit:p=>(p.hit||{}).L10??(p.hit||{})['2026']??-1, dvp:p=>p.dvp??0,
+    time:p=>-(Date.parse((gameOf(p.game)||{}).time||0)||0)}[PL.sort]||(p=>p._s.ev);
+  rows.sort((a,b)=>key(b)-key(a)||b._s.ev-a._s.ev);
   return rows;
 }
-function propRow(p){
-  const imp=implied(p.odds), h=(p.hit||{})['2026'], diff=h!=null&&imp!=null?h-imp:null, idx=PL.data.props.indexOf(p);
-  return `<div class="pl-row" data-prop="${idx}">
-    <button class="pl-star ${PL.stars.has(starKey(p))?'on':''}" data-star="${idx}" aria-label="Star prop">${PL.stars.has(starKey(p))?'★':'☆'}</button>
-    <div><div class="pl-name">${E(p.player)} <span class="pl-sub">${E(p.team)} ${E(p.pos)}</span></div>
-      <div class="pl-sub">${p.side==='O'?'Over':'Under'} ${p.line} ${E(p.market)} · ${fmtOdds(p.odds)} · vs ${E(p.opp)}</div></div>
-    <div class="pl-stats">
-      <div><span class="mut">2026</span><b class="${h>=70?'good':h<=40?'bad':''}">${h==null?'–':h+'%'}</b></div>
-      <div><span class="mut">vs imp</span><b class="${diff>=5?'good':diff<=-5?'bad':''}">${diff==null?'–':(diff>0?'+':'')+diff.toFixed(0)}</b></div>
-      <div><span class="mut">DvP</span><b class="${rankCls(p.dvp)}">${ord(p.dvp)}</b></div>
-      ${p.tdProb!=null?`<div><span class="mut">Proj %</span><b class="${p.tdProb-(imp||0)>=5?'good':p.tdProb-(imp||0)<=-5?'bad':''}">${p.tdProb}</b></div>`:`<div><span class="mut">Edge</span><b class="${p.edge>0?'good':p.edge<0?'bad':''}">${p.edge==null?'–':(p.edge>0?'+':'')+p.edge}</b></div>`}
-    </div></div>`;
+function onePer(rows){ const seen=new Map(); rows.forEach(p=>{ if(!seen.has(p.player)) seen.set(p.player,{p,more:0}); else seen.get(p.player).more++; }); return [...seen.values()]; }
+const gradeOk = (s,k)=> k==='all' ? true : !!s.grade && k.includes(s.grade);
+
+function topCard(p,more){
+  const s=scoreProp(p), g=gameOf(p.game), idx=PL.data.props.indexOf(p), st=PL.stars.has(starKey(p));
+  return `<div class="pl-top" data-prop="${idx}">
+    <div class="pl-top-h">${gradeBadge(s,true)}
+      <div style="flex:1;min-width:0"><div class="pl-name">${E(p.player)} <span class="pl-sub">${E(p.team)} ${E(p.pos)}</span></div>
+        <div class="pl-sub">vs ${E(p.opp)}${g?' · '+E(g.kickoff):''}</div></div>
+      <button class="pl-star ${st?'on':''}" data-star="${idx}" aria-label="Star prop">${st?'★':'☆'}</button></div>
+    <div class="pl-top-bet"><b>Over ${p.line} ${E(p.market)}</b><span class="pl-odds">${fmtOdds(p.odds)}</span>
+      <span class="pl-ev ${s.ev>0?'good':'bad'}">EV ${sgn(Math.round(s.ev*100))}%</span></div>
+    ${probBar(s)}
+    <div class="pl-whys">${dotsHtml(s)}${reasons(p)}${more?`<span class="pl-why more" data-player="${E(p.player)}">+${more} more</span>`:''}</div>
+  </div>`;
 }
+function propRow(p,more){
+  const s=scoreProp(p), idx=PL.data.props.indexOf(p), st=PL.stars.has(starKey(p));
+  return `<div class="pl-row2" data-prop="${idx}">
+    ${gradeBadge(s)}
+    <div style="min-width:0"><div class="pl-name">${E(p.player)} <span class="pl-sub">${E(p.pos)} vs ${E(p.opp)}</span></div>
+      <div class="pl-sub">O ${p.line} ${E(p.market)} · <b class="pl-odds-s">${fmtOdds(p.odds)}</b>${more?` · <span class="pl-more" data-player="${E(p.player)}">+${more} more</span>`:''}</div>
+      <div class="pl-mini"><div class="pl-ptrack"><div class="pl-pfill ${s.pModel>=s.imp?'up':'dn'}" style="left:${Math.min(s.imp,s.pModel)*100}%;width:${Math.max(Math.abs(s.pModel-s.imp)*100,1)}%"></div><div class="pl-ptick" style="left:${s.imp*100}%"></div></div>
+        <span class="pl-sub">${pct(s.imp)} → <b class="${s.pModel>=s.imp?'good':'bad'}">${pct(s.pModel)}</b></span></div></div>
+    <div class="pl-rt"><b class="pl-ev ${s.ev>0?'good':'bad'}">${sgn(Math.round(s.ev*100))}%</b>${dotsHtml(s)}
+      <button class="pl-star ${st?'on':''}" data-star="${idx}" aria-label="Star prop">${st?'★':'☆'}</button></div>
+  </div>`;
+}
+function chips(name,list,cur){ return `<div class="pl-chiprow" data-chip="${name}">${list.map(([v,l])=>`<span class="pl-chipb ${cur===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>`; }
 function screener(){
-  const P=PL.data.props||[], mk=[...new Set(P.map(p=>p.market))].sort(), ps=[...new Set(P.map(p=>p.pos))].sort();
-  const opt=(arr,cur,all)=>`<option value="">${all}</option>`+arr.map(v=>`<option ${v===cur?'selected':''}>${E(v)}</option>`).join('');
-  const rows=filtered();
-  return `<div class="pl-bar">
-    <input id="plSearch" placeholder="Player, team, or market" value="${E(PL.f.search)}">
-    <select id="plMarket">${opt(mk,PL.f.market,'All markets')}</select>
-    <select id="plPos">${opt(ps,PL.f.pos,'All positions')}</select>
-    <select id="plSort">${[['edge','Sort: Edge'],['value','Sort: Hit % vs implied'],['hit','Sort: 2026 hit %'],['dvp','Sort: Softest DvP']].map(([v,l])=>`<option value="${v}" ${PL.sort===v?'selected':''}>${l}</option>`).join('')}</select>
-    <button class="btn ${PL.f.starred?'active':''}" id="plStarOnly">★ My props</button></div>
-    <div class="pl-sub" style="margin:0 0 6px">${rows.length} props${rows.length>PL.limit?`, showing top ${PL.limit}`:''}</div>
-    <div class="pl-card" style="padding:4px 8px">${rows.length?rows.slice(0,PL.limit).map(propRow).join(''):'<div class="pl-sub" style="padding:12px">No props match these filters.</div>'}</div>
-    ${rows.length>PL.limit?`<button class="btn" id="plMore" style="width:100%;margin-bottom:8px">Show ${Math.min(150,rows.length-PL.limit)} more</button>`:''}
-    <div class="pl-note">vs imp = 2026 hit rate minus the probability the odds imply. DvP: 1st = toughest defense. Tap a row for the full player card.</div>`;
+  const f=PL.f, all=boardRows(), P=PL.data.props||[];
+  const nStarted=new Set(P.filter(started).map(p=>p.game)).size;
+  const graded=all.filter(p=>gradeOk(p._s,f.grade));
+  const nA=all.filter(p=>p._s.grade==='A').length, nB=all.filter(p=>p._s.grade==='B').length;
+  const top=onePer(all.filter(p=>p._s.grade==='A'||p._s.grade==='B').sort((a,b)=>(b._s.grade==='A')-(a._s.grade==='A')||b._s.ev-a._s.ev)).slice(0,6);
+  const list=f.onePer?onePer(graded):graded.map(p=>({p,more:0}));
+  const mk=[...new Set(P.filter(p=>inGroup(p,f.group)).map(p=>p.market))].sort();
+  const games=(PL.data.games||[]).filter(g=>f.showStarted||!(g.time&&Date.parse(g.time)<=Date.now()));
+  return `
+  <div class="pl-filters">
+    ${chips('group',GROUP_LBL,f.group)}
+    ${chips('pos',[['','All pos'],['QB','QB'],['RB','RB'],['WR','WR'],['TE','TE']],f.pos)}
+    ${chips('odds',ODDS_LBL,f.odds)}
+    <div class="pl-bar" style="margin:6px 0 0">
+      <input id="plSearch" placeholder="Search player or team" value="${E(f.search)}">
+      <select id="plGame"><option value="">All games</option>${games.map(g=>`<option value="${g.id}" ${f.game===g.id?'selected':''}>${E(g.away)} @ ${E(g.home)} · ${E((g.kickoff||'').split(',')[0])}</option>`).join('')}</select>
+      <select id="plMarket"><option value="">All markets</option>${mk.map(m=>`<option ${m===f.market?'selected':''}>${E(m)}</option>`).join('')}</select>
+    </div>
+    <div class="pl-toggles">
+      <label><input type="checkbox" id="plOnePer" ${f.onePer?'checked':''}> Best prop per player</label>
+      <label><input type="checkbox" id="plStarted" ${f.showStarted?'checked':''}> Show started games${nStarted?` (${nStarted})`:''}</label>
+      <button class="btn small ${f.starred?'active':''}" id="plStarOnly">★ My props${PL.stars.size?` (${PL.stars.size})`:''}</button>
+    </div>
+  </div>
+  <div class="pl-cells" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:10px 0">
+    <div class="pl-cell">A plays<b class="good">${nA}</b></div><div class="pl-cell">B plays<b>${nB}</b></div><div class="pl-cell">Props in view<b>${all.length}</b></div></div>
+  ${top.length?`<p class="pl-h" style="margin:4px 2px 8px">Top plays</p><div class="pl-tops">${top.map(x=>topCard(x.p,x.more)).join('')}</div>`
+     :`<div class="pl-card pl-sub">No A or B plays match these filters. Try "Everything" below or clear a filter.</div>`}
+  <div class="pl-listhead">
+    <p class="pl-h" style="margin:0">All props</p>
+    <select id="plSort">${[['grade','Best grade'],['ev','Best value (EV)'],['edge','Biggest edge (pts)'],['hit','L10 hit rate'],['dvp','Softest matchup'],['time','Kickoff']].map(([v,l])=>`<option value="${v}" ${PL.sort===v?'selected':''}>${l}</option>`).join('')}</select>
+  </div>
+  ${chips('grade',GRADE_LBL,f.grade)}
+  <div class="pl-sub" style="margin:6px 2px">${list.length} ${f.onePer?'players':'props'}${list.length>PL.limit?`, showing ${PL.limit}`:''}</div>
+  <div class="pl-card" style="padding:2px 8px">${list.length?list.slice(0,PL.limit).map(x=>propRow(x.p,x.more)).join(''):'<div class="pl-sub" style="padding:12px">Nothing matches. Widen the grade filter or clear a chip.</div>'}</div>
+  ${list.length>PL.limit?`<button class="btn" id="plMore" style="width:100%;margin-bottom:8px">Show ${Math.min(100,list.length-PL.limit)} more</button>`:''}
+  <details class="pl-card pl-how"><summary>How grades work</summary>
+    <p><b>Model %</b> blends three things, then moves only halfway from the book's price toward that blend, because books are usually close to right:</p>
+    <p><span class="pl-dot g"></span> <b>History</b>: 2026, L10, L20 and 2025 hit rates, weighted by games played and pulled toward the book when the sample is small (harder for TDs).<br>
+    <span class="pl-dot g"></span> <b>Projection</b>: props.cash's projection turned into a chance of going over (its own TD probability for TD props).<br>
+    <span class="pl-dot g"></span> <b>Matchup</b>: defense rank vs the position (1st = toughest) and props.cash's matchup rating.</p>
+    <p>Dots: green = supports the over, red = argues against, gray = neutral. <b>EV</b> = expected return per $1 at the listed price.</p>
+    <p><b>A</b>: EV 10%+, projection agrees, 2+ green, no red, real sample. <b>B</b>: EV 5%+, 2+ green, no red. <b>C</b>: EV 2%+, at least one green and projection not against. Over +600 caps at C. Overs only for now.</p>
+  </details>`;
 }
+function gradeBox(p){
+  const s=scoreProp(p), n=p.hitN||{};
+  const row=(l,v,sub,cls)=>`<div class="pl-kv"><span>${l}${sub?`<div class="pl-sub">${sub}</div>`:''}</span><b class="${cls||''}" style="white-space:nowrap">${v}</b></div>`;
+  return `<div class="pl-card"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${gradeBadge(s,true)}
+      <div style="flex:1"><div class="pl-name">${s.grade?`Grade ${s.grade}`:'No grade'} · EV <span class="${s.ev>0?'good':'bad'}">${sgn(Math.round(s.ev*100))}%</span></div>
+      <div class="pl-sub">${s.green} of 3 signals agree ${dotsHtml(s)}</div></div></div>
+    ${probBar(s)}
+    ${row('History',pct(s.pHist),`2026 ${n['2026']||0} games${n['2025']?`, 2025 ${n['2025']}`:''}, shrunk toward the book`, s.dots.hist>0?'good':s.dots.hist<0?'bad':'')}
+    ${row('Projection',pct(s.pProj),s.td?'props.cash TD probability':(p.projection!=null?`props.cash projects ${(+p.projection).toFixed(1)} vs ${p.line}`:'none'), s.dots.proj>0?'good':s.dots.proj<0?'bad':'')}
+    ${row('Matchup nudge',(s.adj>=0?'+':'')+s.adj.toFixed(2),`${p.dvp!=null?`${E(p.opp)} ${ord(p.dvp)} vs ${E(p.pos)}s`:''}${p.matchupRating!=null&&p.matchupRating>=0?` · rating ${p.matchupRating}/100`:''}`, s.dots.match>0?'good':s.dots.match<0?'bad':'')}
+    ${row('Model vs book',`${pct(s.pModel)} vs ${pct(s.imp)}`,'halfway from the book toward the blend, plus matchup', s.pModel>=s.imp?'good':'bad')}
+  </div>`;
+}
+
 function teamPanel(abbr, pos, home){
   const t=PL.data.teams[abbr]; if(!t||!t.defVsPos||!t.defVsPos[pos]) return '';
   const d=t.defVsPos[pos], order={QB:['passY','passTD','rshY','td'],RB:['rshY','rshA','td','rec','recY','tgt','rrY','rshLng','recLng','q1td'],WR:['recY','rec','tgt','td','recLng','q1td'],TE:['recY','rec','tgt','td','recLng','q1td']};
@@ -1706,7 +1910,7 @@ function vsPosLog(abbr,pos,market){
 }
 function byGame(){
   const G=PL.data.games||[]; if(!PL.game && G.length) PL.game=G[0].id;
-  const g=gameOf(PL.game), P=(PL.data.props||[]).filter(p=>p.game===PL.game);
+  const g=gameOf(PL.game), P=(PL.data.props||[]).filter(p=>p.game===PL.game).sort((a,b)=>scoreProp(b).ev-scoreProp(a).ev);
   const chips=G.map(x=>{ const n=(PL.data.props||[]).filter(p=>p.game===x.id).length;
     return `<div class="pl-chip ${x.id===PL.game?'on':''}" data-game="${x.id}"><b>${E(x.away)} @ ${E(x.home)}</b><div class="pl-sub">${E(x.kickoff.split(',')[0])} · ${n} props</div></div>`; }).join('');
   let h=`<div class="pl-chips">${chips}</div>`;
@@ -1720,7 +1924,7 @@ function byGame(){
   }
   const pos=[...new Set(P.map(p=>p.pos))];
   h+=pos.map(ps=>[g.away,g.home].map(a=>teamPanel(a,ps,a===g.home)).join('')).join('');
-  h+=`<div class="pl-card" style="padding:4px 8px"><p class="pl-h" style="padding:8px 4px 0">Props in this game</p>${P.length?P.map(propRow).join(''):'<div class="pl-sub" style="padding:12px">No props captured for this game yet.</div>'}</div>`;
+  h+=`<div class="pl-card" style="padding:4px 8px"><p class="pl-h" style="padding:8px 4px 0">Props in this game</p>${P.length?P.map(p=>propRow(p)).join(''):'<div class="pl-sub" style="padding:12px">No props captured for this game yet.</div>'}</div>`;
   return h;
 }
 function playerCard(){
@@ -1734,6 +1938,7 @@ function playerCard(){
       <div class="pl-sub">Implied ${imp==null?'–':imp.toFixed(0)+'%'}${p.tdProb!=null?` · props.cash ${p.tdProb}%`:p.projection!=null?` · proj ${p.projection}`:''}${p.matchupRating!=null&&p.matchupRating>=0?` · matchup ${p.matchupRating}/100`:''}${pl&&pl.posRanks&&pl.posRanks[p.market]?` · ${ord(pl.posRanks[p.market])} among ${E(p.pos)}s`:''}</div></div></div>
     <div class="pl-cells" style="grid-template-columns:repeat(auto-fit,minmax(44px,1fr));margin-top:10px">
       ${['2026','2025','H2H','L5','L10','L20','L30'].concat(Object.keys(h)).filter((k,i,a)=>h[k]!=null&&a.indexOf(k)===i).map(k=>[k,h[k]]).map(([k,v])=>`<div class="pl-cell">${k}${(p.hitN||{})[k]?` <span style="font-size:9px">(${p.hitN[k]})</span>`:''}<b class="${v>=70?'good':v<=40?'bad':''}">${v}%</b></div>`).join('')}</div></div>`;
+  s+=gradeBox(p);
   const sg=signals(p), tabs=[['player','Player'],['opp',`vs ${p.opp} defense`]];
   s+=`<div class="pl-seg" data-seg="card" style="margin:0 0 10px">${tabs.map(([k,l])=>`<span class="${PL.cardTab===k?'on':''}" data-v="${k}" style="flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600">${E(l)}</span>`).join('')}</div>`;
   s+=`<div class="pl-card"><p class="pl-h">Signal check</p><div class="pl-sig">
@@ -1789,7 +1994,7 @@ function opponentView(p,g){
     ${offR.map(([k,v])=>`<div class="pl-kv"><span>${E(p.team)} ${OFF[k]}</span><b>${E(v)}</b></div>`).join('')}
     ${defR.map(([k,v])=>`<div class="pl-kv"><span>${E(o)} ${DEF[k]}</span><b>${E(v)}</b></div>`).join('')}</div>`;
   const same=(PL.data.props||[]).filter(x=>x.opp===o && x!==p);
-  s+=`<div class="pl-card" style="padding:4px 8px"><p class="pl-h" style="padding:8px 4px 0">Other props vs ${E(o)}</p>${same.length?same.map(propRow).join(''):'<div class="pl-sub" style="padding:12px">No other props against this defense yet.</div>'}</div>`;
+  s+=`<div class="pl-card" style="padding:4px 8px"><p class="pl-h" style="padding:8px 4px 0">Other props vs ${E(o)}</p>${same.length?same.map(p=>propRow(p)).join(''):'<div class="pl-sub" style="padding:12px">No other props against this defense yet.</div>'}</div>`;
   if(!t.defVsPos && !defR.length && !t.pastGames) s+=`<div class="pl-card pl-sub">No props.cash defense data captured for ${E(NFL_NAMES[o]||o)} yet. Only game lines are shown. The scraper's team pull (all 32 defenses) fills this in.</div>`;
   return s;
 }
@@ -1800,7 +2005,7 @@ function render(){
   if(!PL.data){ root.innerHTML=`<div class="pl-card pl-sub">No props.cash data loaded. Load props.json from the Data tab.</div>`; return; }
   const v=PL.view==='player'&&!PL.prop?'screener':PL.view;
   root.innerHTML = (PL.data.sample?`<div class="pl-banner">Sample data.</div>`:PL.data.note?`<div class="pl-banner">${E(PL.data.note)}</div>`:`<div class="pl-sub" style="margin-top:8px">props.cash · scraped ${E(PL.data.scraped_at||'')}</div>`)
-    + `<div class="pl-views">${[['screener','Screener'],['game','By game'],['player','Player card']].map(([k,l])=>`<div class="pl-vbtn ${v===k?'on':''}" data-plview="${k}">${l}</div>`).join('')}</div>`
+    + `<div class="pl-views">${[['screener','Best plays'],['game','By game'],['player','Player card']].map(([k,l])=>`<div class="pl-vbtn ${v===k?'on':''}" data-plview="${k}">${l}</div>`).join('')}</div>`
     + (v==='screener'?screener():v==='game'?byGame():playerCard());
   wire(root);
 }
@@ -1813,10 +2018,15 @@ function wire(root){
   const on=(id,ev,fn)=>{ const el=root.querySelector(id); if(el) el[ev]=fn; };
   on('#plBack','onclick',()=>{ PL.view=PL.returnTo||'screener'; render(); });
   on('#plLogToggle','onclick',()=>{ PL.logOpen=!PL.logOpen; render(); });
-  on('#plMarket','onchange',e=>{ PL.limit=150; PL.f.market=e.target.value; render(); });
-  on('#plPos','onchange',e=>{ PL.limit=150; PL.f.pos=e.target.value; render(); });
-  on('#plSort','onchange',e=>{ PL.sort=e.target.value; render(); });
-  on('#plMore','onclick',()=>{ PL.limit+=150; render(); });
+  on('#plMarket','onchange',e=>{ PL.limit=100; PL.f.market=e.target.value; render(); });
+  on('#plGame','onchange',e=>{ PL.limit=100; PL.f.game=e.target.value; render(); });
+  on('#plSort','onchange',e=>{ PL.sort=e.target.value; saveFilters(); render(); });
+  on('#plMore','onclick',()=>{ PL.limit+=100; render(); });
+  on('#plOnePer','onchange',e=>{ PL.f.onePer=e.target.checked; saveFilters(); render(); });
+  on('#plStarted','onchange',e=>{ PL.f.showStarted=e.target.checked; render(); });
+  root.querySelectorAll('[data-chip]').forEach(row=>row.querySelectorAll('[data-v]').forEach(c=>c.onclick=()=>{
+    const k=row.dataset.chip; PL.f[k]=c.dataset.v; if(k==='group') PL.f.market=''; PL.limit=100; saveFilters(); render(); }));
+  root.querySelectorAll('[data-player]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); PL.f.search=el.dataset.player; PL.f.onePer=false; PL.f.grade='all'; render(); window.scrollTo(0,0); });
   on('#plStarOnly','onclick',()=>{ PL.f.starred=!PL.f.starred; render(); });
   on('#plSearch','oninput',e=>{ PL.f.search=e.target.value; const pos=e.target.selectionStart; render(); const s=q('#plSearch'); s.focus(); s.setSelectionRange(pos,pos); });
 }
@@ -1835,6 +2045,7 @@ function addDataCard(){
   q('#exportPropPlays').onclick=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify([...PL.stars],null,2)],{type:'application/json'})); a.download='nfl_propplays.json'; a.click(); };
 }
 function expandRows(d){
+  ((d&&d.props)||[]).forEach(p=>{ delete p._s; });
   Object.values((d&&d.teams)||{}).forEach(t=>Object.values(t.vsPosLog||{}).forEach(byM=>Object.keys(byM).forEach(k=>{
     byM[k]=byM[k].map(r=>Array.isArray(r)?{player:r[0],result:r[1],line:r[2],odds:r[3],opp:r[4],date:r[5],season:r[6],hit:!!r[7]}:r); })));
   return d;
