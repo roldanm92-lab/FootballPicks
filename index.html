@@ -1933,6 +1933,24 @@ function screener(){
     <p><b>A</b>: EV 10%+, projection agrees, 2+ green, no red, real sample. <b>B</b>: EV 5%+, 2+ green, no red. <b>C</b>: EV 2%+, at least one green and projection not against. Over +600 caps at C. Overs only for now.</p>
   </details>`;
 }
+function typeCard(p){
+  const ty0=typeOf(p.player,p.pos,p.market); if(!ty0) return '';
+  const r=roleOf(p.player), mk=[p.market].concat(p.pos==='WR'?['Receiving Yards','Receptions']:(RUSH_ONLY.has(p.market)?['Rush Yards']:['Receptions'])).filter((m,i,a)=>a.indexOf(m)===i);
+  const blocks=mk.map(m=>{ const ty=typeOf(p.player,p.pos,m); if(!ty) return '';
+    const rows=((((PL.data.teams[p.opp]||{}).vsPosLog||{})[p.pos]||{})[m]||[]).filter(x=>typeOf(x.player,p.pos,m)===ty);
+    const s=typeStats(p.opp,p.pos,m)[ty], b=typeBase(p.pos,m,ty);
+    if(!rows.length) return `<div class="pl-sub" style="padding:6px 0">${E(m)}: no ${E(lowerFirst(TYPE_LBL(ty)))} with a prop line vs ${E(p.opp)} yet.</div>`;
+    const cur=s.cur, rate=cur.n?cur.overs/cur.n:null, cls=rate==null||b==null?'':rate-b>=.15?'good':rate-b<=-.15?'bad':'';
+    return `<div style="margin-top:8px"><div class="pl-kv" style="border:0;padding:2px 0"><span><b>${E(m)}</b></span>
+        <b class="${cls}">${cur.n?`${cur.overs}/${cur.n} over this season`:'no 2026 games'}</b></div>
+      <div class="pl-sub">${cur.n?`median ${cur.med>0?'+':''}${(+cur.med).toFixed(1)} vs the line · `:''}league ${b==null?'–':Math.round(b*100)+'%'} for ${E(lowerFirst(TYPE_LBL(ty)))} · 2025–26: ${s.all.overs}/${s.all.n} over</div>
+      <div class="pl-scroll" style="margin-top:4px"><table class="pl-tbl"><tr><th>Player</th><th>Result</th><th>Line</th><th>Game</th></tr>
+      ${rows.map(x=>`<tr${x.season!==Math.max(...rows.map(y=>y.season))?' class="mut"':''}><td>${E(x.player)}</td><td class="${x.hit?'good':'bad'}">${x.hit?'▲':'▼'} ${E(x.result)}</td><td>${E(x.line)}</td><td>${E(x.opp)} ${E(x.date)}${x.season!==Math.max(...rows.map(y=>y.season))?` '${String(x.season).slice(2)}`:''}</td></tr>`).join('')}
+      </table></div></div>`; }).join('');
+  const used=typeSignal(p);
+  return `<div class="pl-card"><p class="pl-h">${E(p.opp)} vs ${E(TYPE_LBL(ty0))} · ${E(p.player.split(' ').slice(-1)[0])} is a ${E(p.pos==='WR'?`${r.type} WR (${r.slotPct}% slot)`:`${r.type} RB${r.style?', '+r.style.toLowerCase()+' runner':''}`)}</p>${blocks}
+    <div class="pl-note">${used?'Used in the grade (4+ games this season).':'Not used in the grade yet: fewer than 4 games of this type vs '+E(p.opp)+' this season. Shown so you can judge it yourself.'} Gray rows are last season.</div></div>`;
+}
 function gradeBox(p){
   const s=scoreProp(p), n=p.hitN||{};
   const row=(l,v,sub,cls)=>`<div class="pl-kv"><span>${l}${sub?`<div class="pl-sub">${sub}</div>`:''}</span><b class="${cls||''}" style="white-space:nowrap">${v}</b></div>`;
@@ -1942,7 +1960,7 @@ function gradeBox(p){
     ${probBar(s)}
     ${row('History',pct(s.pHist),`2026 ${n['2026']||0} games${n['2025']?`, 2025 ${n['2025']}`:''}, shrunk toward the book`, s.dots.hist>0?'good':s.dots.hist<0?'bad':'')}
     ${row('Projection',pct(s.pProj),s.td?'props.cash TD probability':(p.projection!=null?`props.cash projects ${(+p.projection).toFixed(1)} vs ${p.line}`:'none'), s.dots.proj>0?'good':s.dots.proj<0?'bad':'')}
-    ${row('Matchup nudge',(s.adj>=0?'+':'')+s.adj.toFixed(2),`${s.tsig?`${E(p.opp)} vs ${E(lowerFirst(TYPE_LBL(s.tsig.ty)))}: ${s.tsig.overs}/${s.tsig.n} over · `:''}${p.dvp!=null?`${E(p.opp)} ${ord(p.dvp)} vs ${E(p.pos)}s`:''}${p.matchupRating!=null&&p.matchupRating>=0?` · rating ${p.matchupRating}/100`:''}`, s.dots.match>0?'good':s.dots.match<0?'bad':'')}
+    ${row('Matchup nudge',(s.adj>=0?'+':'')+s.adj.toFixed(2),`${s.tsig?`${E(p.opp)} vs ${E(lowerFirst(TYPE_LBL(s.tsig.ty)))}: ${s.tsig.overs}/${s.tsig.n} over · `:(()=>{const ty=typeOf(p.player,p.pos,p.market),st=ty&&typeStats(p.opp,p.pos,p.market)[ty];return st&&st.cur.n?`${E(p.opp)} vs ${E(lowerFirst(TYPE_LBL(ty)))}: ${st.cur.overs}/${st.cur.n} over (too few to count) · `:'';})()}${p.dvp!=null?`${E(p.opp)} ${ord(p.dvp)} vs ${E(p.pos)}s`:''}${p.matchupRating!=null&&p.matchupRating>=0?` · rating ${p.matchupRating}/100`:''}`, s.dots.match>0?'good':s.dots.match<0?'bad':'')}
     ${row('Model vs book',`${pct(s.pModel)} vs ${pct(s.imp)}`,'halfway from the book toward the blend, plus matchup', s.pModel>=s.imp?'good':'bad')}
   </div>`;
 }
@@ -2002,6 +2020,7 @@ function playerCard(){
     <div class="pl-cells" style="grid-template-columns:repeat(auto-fit,minmax(44px,1fr));margin-top:10px">
       ${['2026','2025','H2H','L5','L10','L20','L30'].concat(Object.keys(h)).filter((k,i,a)=>h[k]!=null&&a.indexOf(k)===i).map(k=>[k,h[k]]).map(([k,v])=>`<div class="pl-cell">${k}${(p.hitN||{})[k]?` <span style="font-size:9px">(${p.hitN[k]})</span>`:''}<b class="${v>=70?'good':v<=40?'bad':''}">${v}%</b></div>`).join('')}</div></div>`;
   s+=gradeBox(p);
+  s+=typeCard(p);
   const sg=signals(p), tabs=[['player','Player'],['opp',`vs ${p.opp} defense`]];
   s+=`<div class="pl-seg" data-seg="card" style="margin:0 0 10px">${tabs.map(([k,l])=>`<span class="${PL.cardTab===k?'on':''}" data-v="${k}" style="flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600">${E(l)}</span>`).join('')}</div>`;
   s+=`<div class="pl-card"><p class="pl-h">Signal check</p><div class="pl-sig">
