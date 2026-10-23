@@ -98,6 +98,10 @@
   .pickrow:first-child{border-top:none;}
   .pickrow .ptext{font-size:13px;font-weight:600;}
   .pickrow .pwho{font-size:11px;color:var(--sub);margin-top:2px;}
+  .pwho .tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:4px;vertical-align:1px;}
+  .pwho .tagc{background:rgba(96,165,250,.18);color:#93c5fd;}
+  .pwho .tagpl{background:rgba(74,222,128,.16);color:#4ade80;} .pwho .tagpl.gB{background:rgba(250,204,21,.16);color:#facc15;}
+  .prorow .conflict{color:#fbbf24;}
   .pickrow .pwho .takers{cursor:pointer;color:var(--accent);text-decoration:underline dotted;}
   .pickrow .pstar{flex-shrink:0;}
   .takerlist{display:none;margin-top:6px;padding:8px;background:var(--panel2);border-radius:6px;font-size:11px;}
@@ -574,6 +578,7 @@ function parseFullDateTime(str){
 /* ---------------------------------------------------------------------
    3. Game construction
    ------------------------------------------------------------------- */
+const NBA_MODEL_TRUST_FROM = Date.parse('2026-11-15T00:00:00-05:00'); // ~15 games in; until then NBA model grades get a low-confidence note
 const MIN_GAME_DATE = new Date(2026,9,22); // hide games before this date (finals from earlier in the week)
 const FALLBACK_DATE = new Date(2026,8,3); // hardcoded early fallback (no time -> midnight)
 
@@ -1260,7 +1265,8 @@ function renderGameCard(sport, g){
     const col = (lbl, inner)=>`<div class="col"><div class="lbl">${lbl}</div><div class="val">${inner}</div></div>`;
     if(p){
       html += col('Grade', pair(`<span class="grade ${gradeClass(p.Grade1)}">${esc(p.Grade1||'-')}</span>`,
-                                `<span class="grade ${gradeClass(p.Grade2)}">${esc(p.Grade2||'-')}</span>`));
+                                `<span class="grade ${gradeClass(p.Grade2)}">${esc(p.Grade2||'-')}</span>`)
+        + (sport==='nba' && Date.now() < NBA_MODEL_TRUST_FROM ? `<div class="propnote">Early season: low confidence</div>` : ''));
       if(has(p.ProLine1) || has(p.ProLine2)){
         const e1 = has(p.Edge1) ? ` <span class="propnote">(${esc(p.Edge1)})</span>` : '';
         const e2 = has(p.Edge2) ? ` <span class="propnote">(${esc(p.Edge2)})</span>` : '';
@@ -1288,6 +1294,14 @@ function renderGameCard(sport, g){
       const a1 = act('1'), a2 = act('2');
       const inner = (a1||a2) ? ((a1?`<div>${n1}: ${a1}</div>`:'') + (a2?`<div>${n2}: ${a2}</div>`:'')) : '—';
       html += col('Sharp signals', inner);
+      // Sharp vs model conflict (10/23): Sharp Action on one side, the model (Model Proj signal or an A/B projection grade) on the other.
+      const ab = gr => /^[AB]/.test(String(gr||''));
+      const modelSide = sh.ModelProj1==='Y' ? 1 : sh.ModelProj2==='Y' ? 2 : (p && ab(p.Grade1) ? 1 : p && ab(p.Grade2) ? 2 : 0);
+      const sharpSide = sh.SharpAction1==='Y' && sh.SharpAction2!=='Y' ? 1 : sh.SharpAction2==='Y' && sh.SharpAction1!=='Y' ? 2 : 0;
+      if(modelSide && sharpSide && modelSide!==sharpSide){
+        const nm = i => i===1 ? n1 : n2;
+        html += col('⚠ Sharp vs model', `<div class="conflict">Sharp Action on <b>${nm(sharpSide)}</b>, model on <b>${nm(modelSide)}</b>.</div><div class="propnote">Sharp won all 5 of these in the 10/21–10/22 NBA review.</div>`);
+      }
     }
     if(narrHits.length){
       html += col('Narratives', narrHits.map(n=>
@@ -1322,7 +1336,15 @@ function renderGameCard(sport, g){
     sec.innerHTML = `<div class="propnote">No picks match current filters.</div>`;
   } else {
     let html = `<h4>Picks</h4>`;
+    // consensus across different numbers/prices: same side + same market, 2+ distinct analysts
+    const sideCount = {};
+    groups.forEach(grp=>{ const k=pickSideKey(grp.pick); if(!k) return; (sideCount[k]=sideCount[k]||new Set()); grp.takers.forEach(t=>sideCount[k].add(t.analyst||'?')); });
     groups.forEach((grp,i)=>{
+      const sk=pickSideKey(grp.pick), nSide = sk&&sideCount[sk] ? sideCount[sk].size : 0;
+      const tags = [];
+      if(nSide>=2) tags.push(`<span class="tag tagc" title="Experts on this side at any number">${nSide} experts</span>`);
+      const pl = plTag(sport, g, grp.pick);
+      if(pl) tags.push(`<span class="tag tagpl g${pl.grade}" title="Props Lab: ${esc(pl.player)} ${esc(pl.market)} o${pl.line} (${pl.odds>0?'+':''}${pl.odds})">Props Lab ${pl.grade}</span>`);
       const starred = S[sport].myPlays.has(playKey(sport,g.team1,g.team2,grp.pick));
       const whoText = grp.takers.length===1
         ? esc(grp.takers[0].analyst||'')
@@ -1330,7 +1352,7 @@ function renderGameCard(sport, g){
       html += `<div class="pickrow">
         <div>
           <div class="ptext">${esc(grp.pick)}</div>
-          <div class="pwho">${whoText}</div>
+          <div class="pwho">${whoText}${tags.length?' '+tags.join(' '):''}</div>
           <div class="takerlist" id="tl-${gid.replace(/[^a-z0-9]/gi,'')}-${i}">
             ${grp.takers.map(t=>`<div><b>${esc(t.analyst||'?')}</b> ${t.units?('&middot; '+esc(t.units)):''} ${t.record?('&middot; '+esc(t.record)):''}${t.source?(' &middot; <i>'+esc(t.source)+'</i>'):''}${t.note?('<br><span class="propnote">'+esc(t.note)+'</span>'):''}</div>`).join('')}
           </div>
@@ -1379,6 +1401,29 @@ function renderGameCard(sport, g){
   },0);
 
   return div;
+}
+
+// 10/23: side key for consensus ("PHI -2.5-110" and "PHI -1.5-105" are the same side)
+function pickSideKey(t){
+  t=String(t||'').trim(); let m;
+  const per = (t.match(/\((1H|2H|1Q|2Q|3Q|4Q|Live)\)/)||[])[0]||'';
+  if((m=t.match(/^([A-Z]{2,5}) [+-]\d+(?:\.\d+)?(?: \([^)]*\))?[+-]\d{3,4}$/))) return m[1]+'|spread'+per;
+  if((m=t.match(/^([A-Z]{2,5}) [+-]\d{3,4}(?: \([^)]*\))?$/))) return m[1]+'|ml'+per;
+  if((m=t.match(/^(Over|Under) \d+(?:\.\d+)?(?: \([^)]*\))?[+-]\d{3,4}$/))) return m[1]+'|total'+per;
+  if((m=t.match(/^([A-Z]{2,5}) ([ou])\d+(?:\.\d+)?[+-]\d{3,4}$/))) return m[1]+'|tt|'+m[2];
+  if((m=t.match(/^(.+?) ([ou])\d+(?:\.\d+)? (.+?)[+-]\d{3,4}$/))) return m[1]+'|'+m[3]+'|'+m[2]+per;
+  if((m=t.match(/^(.+?) (Anytime TD Scorer|Double-Double|First Touchdown Scorer) Yes/))) return m[1]+'|'+m[2];
+  return null;
+}
+// 10/23: Props Lab grade (A/B only) for an expert's over prop on this game
+function plTag(sport, g, t){
+  if(!(window.PropsLab && PropsLab.lookup) || !g.team1Abbrev || !g.team2Abbrev) return null;
+  let m=String(t||'').match(/^(.+?) o(\d+(?:\.\d+)?) (.+?)[+-]\d{3,4}$/), who, stat, line;
+  if(m){ who=m[1]; line=+m[2]; stat=m[3]; }
+  else if((m=String(t||'').match(/^(.+?) Anytime TD Scorer Yes/))){ who=m[1]; stat='Anytime TD Scorer'; line=0.5; }
+  else return null;
+  const r=PropsLab.lookup(sport,[g.team1Abbrev,g.team2Abbrev],who,stat,line);
+  return r && (r.grade==='A'||r.grade==='B') ? r : null;
 }
 
 function esc(s){
@@ -1903,8 +1948,29 @@ function scoreProp(p){
   const longshot = p.odds>600;
   if(longshot) grade = (grade && dots.proj===1 && !thin) ? 'C' : '';
   if(thin && grade==='B') grade='C';
-  return p._s={tsig, longshot, imp, pHist, pProj, pModel, blend, adj, ev, edge:pModel-imp, dots, green, red, grade, thin, sample, td};
+  // ---- 2026-10-23 guardrails (from the 10/21-10/22 NBA results review, §24-26) ----
+  const caps=[];
+  const inj=injStatus(p);
+  if(inj && /^(out|doubtful)$/i.test(inj)){ if(grade) caps.push(`${inj}: not graded`); grade=''; }
+  // price check: book price far longer than his own hit rate implies -> likely a mis-scraped or alt-line price
+  const hr = h.L10!=null ? h.L10/100 : (h['2026']!=null ? h['2026']/100 : null);
+  const priceCheck = !td && hr!=null && p.odds>=200 && imp < hr*.5;
+  if(priceCheck && (grade==='A'||grade==='B')){ grade='C'; caps.push('Price check: capped at C'); }
+  if(PL.sport==='nba'){
+    if(p.odds>=150 && (grade==='A'||grade==='B')){ grade='C'; caps.push('+150 or longer: capped at C'); }
+    if(NBA_WEAK_MARKETS.has(p.marketKey) && (grade==='A'||grade==='B')){ grade='C'; caps.push('Market under review: capped at C'); }
+  }
+  return p._s={tsig, longshot, imp, pHist, pProj, pModel, blend, adj, ev, edge:pModel-imp, dots, green, red, grade, thin, sample, td, inj, priceCheck, caps};
 }
+// Markets that graded badly in the NBA results reviews (graded 1Q Rebounds 14-22, graded 3PM 1-7 over 10/21-10/22).
+const NBA_WEAK_MARKETS = new Set(['q1Rebounds','fg3PtMade']);
+// Injury status from props.cash roster-activity. Each card's `roster` lists its team's injuries, so build a team-wide map.
+function injStatus(p){
+  const D=PL.data; if(!D||!D.players) return null;
+  if(!D._inj){ const m={}; Object.values(D.players).forEach(c=>{ const t=c.team; (c.roster||[]).forEach(r=>{ if(Array.isArray(r)&&r[0]) (m[t]=m[t]||{})[injKey(r[0])]=r[2]; }); }); D._inj=m; }
+  const t=D._inj[p.team]; return t ? (t[injKey(p.player)]||null) : null;
+}
+const injKey = n=> String(n).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\b(jr|sr|ii|iii|iv)\b\.?/g,'').replace(/[^a-z]/g,'');
 
 /* ---------- best plays board ---------- */
 let GROUPS = {
@@ -1945,6 +2011,8 @@ function reasons(p){
   if(s.tsig){ const t=s.tsig; out.push([t.d>=.1?1:t.d<=-.1?-1:0, `${p.opp} vs ${lowerFirst(TYPE_LBL(t.ty))}${PL.sport==='nba'&&t.scope!=='*'?' ('+p.pos+')':''}: ${t.overs}/${t.n} over`]); }
   if(s.thin) out.push([-1,'Small sample']);
   if(s.longshot) out.push([0,'Longshot']);
+  if(s.inj) out.push([/^(out|doubtful)$/i.test(s.inj)?-1:0, s.inj]);
+  (s.caps||[]).filter(c=>!/not graded/.test(c)).forEach(c=>out.push([-1,c]));
   return out.map(([v,t])=>`<span class="pl-why ${v>0?'g':v<0?'r':''}">${E(t)}</span>`).join('');
 }
 function boardRows(){
@@ -2089,6 +2157,8 @@ function gradeBox(p){
     ${row('Projection',pct(s.pProj),s.td?`props.cash ${PL.sport==='nba'?'':'TD '}probability`:(p.projection!=null?`props.cash projects ${(+p.projection).toFixed(1)} vs ${p.line}`:'none'), s.dots.proj>0?'good':s.dots.proj<0?'bad':'')}
     ${row('Matchup nudge',(s.adj>=0?'+':'')+s.adj.toFixed(2),`${s.tsig?`${E(p.opp)} vs ${E(lowerFirst(TYPE_LBL(s.tsig.ty)))}: ${s.tsig.overs}/${s.tsig.n} over · `:(()=>{const ty=typeOf(p.player,p.pos,p.market),st=ty&&typeStats(p.opp,p.pos,p.market)[ty];return st&&st.cur.n?`${E(p.opp)} vs ${E(lowerFirst(TYPE_LBL(ty)))}: ${st.cur.overs}/${st.cur.n} over (too few to count) · `:'';})()}${p.dvp!=null?`${E(p.opp)} ${ord(p.dvp)} vs ${E(p.pos)}s`:''}${p.matchupRating!=null&&p.matchupRating>=0?` · rating ${p.matchupRating}/100`:''}`, s.dots.match>0?'good':s.dots.match<0?'bad':'')}
     ${row('Model vs book',`${pct(s.pModel)} vs ${pct(s.imp)}`,'halfway from the book toward the blend, plus matchup', s.pModel>=s.imp?'good':'bad')}
+    ${s.inj?row('Injury report',E(s.inj),'props.cash roster activity',/^(out|doubtful)$/i.test(s.inj)?'bad':''):''}
+    ${(s.caps||[]).length?`<div class="pl-note">${s.caps.map(E).join(' · ')}. Rules added 10/23 from the NBA results review: long-odds and weak-market plays stopped winning at their grade.</div>`:''}
   </div>`;
 }
 
@@ -2338,7 +2408,37 @@ function applySport(sp){
   if(changed){ PL.prop=null; PL.game=null; PL.limit=100; Object.assign(PL.f,{search:'',market:'',game:'',starred:false});
     if(!GROUP_LBL.some(([k])=>k===PL.f.group)) PL.f.group=''; if(PL.f.pos && !POSITIONS.includes(PL.f.pos)) PL.f.pos=''; if(PL.view==='player') PL.view='screener'; }
 }
-window.PropsLab = { render, onSport:s=>{ if(s==='nfl'||s==='nba') applySport(s); else PL.sport=s; render(); }, _state:PL };
+// Board helper (10/23): grade an expert's over prop with the Props Lab model, without touching Props Lab view state.
+const AN_STAT_MK = {
+  nba:{'Pts':'points','Rebs':'rebounds','Ast':'assists','3pt M':'fg3PtMade','Pts+Rebs+Ast':'pointsReboundsAssists','Pts+Rebs':'pointsRebounds',
+       'Pts+Ast':'pointsAssists','Rebs+Ast':'reboundsAssists','Blk':'blocks','Stl':'steals','TO':'turnovers'},
+  nfl:{'Recs':'receptions','Rec Yds':'recYards','Rush Att':'rushAttempts','Rush Yds':'rushYards','Longest Reception':'recLng','Longest Rush':'rushLng',
+       'Pass Att':'passAttempts','Pass Yds':'passYards','Pass TDs':'passTD','Pass Comp':'passCompletions','Longest Completion':'passLng',
+       'Int':'passInt','Tackles + Ast':'tacklesAndAssists','Kicking Pts':'kickingPoints','Rush + Rec Yds':'rushAndRecYards','Anytime TD Scorer':'anytimeTD'}};
+const AB_FIX = {JAX:'JAC',LAR:'LA',WSH:'WAS',NO:'NOP',GS:'GSW',SA:'SAS',NY:'NYK',PHO:'PHX',UTAH:'UTA',BRK:'BKN'};
+const abFix = a=> AB_FIX[String(a||'').toUpperCase()] || String(a||'').toUpperCase();
+function lookupProp(sp, teams, who, stat, line){
+  if(sp!=='nba' && sp!=='nfl') return null;
+  const mk=(AN_STAT_MK[sp]||{})[stat]; if(!mk) return null;
+  if(!PL.sets[sp]) PL.sets[sp]=expandRows(sp==='nba'?window.EMBEDDED_NBA_PROPS:window.EMBEDDED_PROPS);
+  const D=PL.sets[sp]; if(!D||!D.props) return null;
+  const T=teams.map(abFix), m=String(who).match(/^([A-Za-z])\.\s*(.+)$/); if(!m) return null;
+  const ini=m[1].toLowerCase(), last=injKey(m[2]);
+  const cands=D.props.filter(p=>p.marketKey===mk && T.includes(abFix(p.team)) && (()=>{ const parts=String(p.player).split(' ');
+      return parts[0][0].toLowerCase()===ini && injKey(parts.slice(1).join(' ')).startsWith(last); })());
+  if(!cands.length) return null;
+  const best=cands.find(p=>line==null || Math.abs(p.line-line)<.01);   // same number only: a grade at another line says nothing about this bet
+  if(!best) return null;
+  const ck=sp+'|'+best.player+'|'+mk+'|'+best.line; LK_CACHE.set=LK_CACHE.set||D; if(LK_CACHE.set!==D){LK_CACHE.m={};LK_CACHE.set=D;} if(ck in LK_CACHE.m) return LK_CACHE.m[ck];
+  // score in that sport's config, then restore whatever Props Lab is showing
+  const keep={sport:PL.sport,data:PL.data,ts:PL._ts,tb:PL._tb,cfg:{RANK_KEY,RANK_LBL,POIS,CV,TDP,GROUPS,GROUP_LBL,NTEAMS,POSITIONS}};
+  const C = sp==='nba'?NBA_CFG:NFL_CFG;
+  ({RANK_KEY,RANK_LBL,POIS,CV,TDP,GROUPS,GROUP_LBL,NTEAMS,POSITIONS}=C); PL.sport=sp; PL.data=D; PL._ts=(PL._lk=PL._lk||{})[sp+'ts']||(PL._lk[sp+'ts']={}); PL._tb=PL._lk[sp+'tb']||(PL._lk[sp+'tb']={});
+  let s; try{ s=scoreProp(best); } finally { ({RANK_KEY,RANK_LBL,POIS,CV,TDP,GROUPS,GROUP_LBL,NTEAMS,POSITIONS}=keep.cfg); PL.sport=keep.sport; PL.data=keep.data; PL._ts=keep.ts; PL._tb=keep.tb; }
+  return LK_CACHE.m[ck]={grade:s.grade, ev:s.ev, line:best.line, odds:best.odds, player:best.player, market:best.market};
+}
+const LK_CACHE={m:{},set:null};
+window.PropsLab = { render, onSport:s=>{ if(s==='nfl'||s==='nba') applySport(s); else PL.sport=s; render(); }, _state:PL, lookup:lookupProp };
 document.addEventListener('DOMContentLoaded', ()=>{ PL.sets.nfl = expandRows(window.EMBEDDED_PROPS || null); PL.sets.nba = expandRows(window.EMBEDDED_NBA_PROPS || null);
   applySport('nfl'); addDataCard(); render(); });
 })();
