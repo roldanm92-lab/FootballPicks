@@ -2046,7 +2046,7 @@ function writeUp(p){
   // keep the write-up about matchup/role/usage: no hit rates, no props.cash references
   const keep=x=>!/hit rate|props\.cash|H2H|of his last/i.test(x);
   const why=sg.F.filter(keep).slice(0,3).map(x=>x.replace(/\.$/,'')), risk=sg.A.filter(keep);
-  if(why.length) t+=` Supporting: ${why.join('; ')}.`;
+  if(why.length) t+=' '+why.map(x=>x.charAt(0).toUpperCase()+x.slice(1)+'.').join(' ');
   if(risk.length) t+=` Risk: ${risk[0].replace(/\.$/,'')}.`;
   return t;
 }
