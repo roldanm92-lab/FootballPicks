@@ -1997,6 +1997,37 @@ function probBar(s){
       <div class="pl-ptick" style="left:${b}%"></div><div class="pl-pdot ${up?'up':'dn'}" style="left:${m}%"></div></div>
     <div class="pl-plbl"><span>Book ${b}%</span><span class="${up?'good':'bad'}">Model ${m}%</span></div></div>`;
 }
+/* ---- 2026-10-27: our own price + our own line ----
+   fairOdds: the model's over probability as no-vig American odds.
+   ourLine: the line where the model has the over at exactly 50%. Built from the same
+   spread the projection step uses (normal, or Poisson for count markets), re-centred so it
+   gives pModel at the posted line - i.e. the full model (history + projection + matchup),
+   not just the props.cash projection. None for anytime-TD markets (no line to set). */
+function fairOdds(pr){ if(pr==null||!(pr>0&&pr<1)) return null; return pr>=.5? -Math.round(100*pr/(1-pr)) : Math.round(100*(1-pr)/pr); }
+function invPhi(q){ let lo=-8, hi=8; for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(phi(m)<q) lo=m; else hi=m; } return (lo+hi)/2; }
+function ourLine(p){
+  const s=scoreProp(p); if(s._ol!==undefined) return s._ol;
+  const mk=p.marketKey, line=+p.line, pm=s.pModel;
+  if(TDP.has(mk)||!(line>=0)||pm==null) return s._ol=null;
+  if(POIS.has(mk)){
+    let lo=.01, hi=Math.max(4*line+10,10);
+    for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(poisOver(m,line)<pm) lo=m; else hi=m; }
+    const lam=(lo+hi)/2; let best=null, bd=9;
+    for(let k=0;k<=Math.ceil(lam*3+6);k++){ const d=Math.abs(poisOver(lam,k+.5)-.5); if(d<bd){ bd=d; best=k+.5; } }
+    return s._ol={line:best, mean:lam};
+  }
+  const pr=(p.projection!=null&&p.projection>0)? +p.projection : line;
+  const floor = PL.sport==='nba' ? (/^q1/.test(mk)?1.2:/^points/.test(mk)?3:1.5) : (/Yards|Lng|Points/.test(mk)?5:1.2);
+  const sd=Math.max((CV[mk]||.5)*pr, floor);
+  const mu=Math.max(0, line - sd*invPhi(1-pm));
+  return s._ol={line:Math.round(mu*2)/2, mean:mu};
+}
+const olTxt = o=> o==null?'–':(+o.line).toFixed(1);
+function ourHtml(p, cls){
+  const s=scoreProp(p), fo=fairOdds(s.pModel), ol=ourLine(p);
+  const ln = ol? ` · our line <b class="${ol.line>p.line?'good':ol.line<p.line?'bad':''}">${olTxt(ol)}</b>` : '';
+  return `<span class="${cls||'pl-sub'}" title="Our price = the model's ${pct(s.pModel)} as no-vig odds. Our line = where the model has the over at 50%.">our <b>${fmtOdds(fo)}</b>${ln}</span>`;
+}
 function dotsHtml(s){
   const one=(k,l)=>`<span class="pl-dot ${s.dots[k]>0?'g':s.dots[k]<0?'r':''}" title="${l}"></span>`;
   return `<span class="pl-dots" aria-label="${s.green} of 3 signals agree">${one('hist','History')}${one('proj','Projection')}${one('match','Matchup')}</span>`;
@@ -2045,6 +2076,7 @@ function topCard(p,more){
       <button class="pl-star ${st?'on':''}" data-star="${idx}" aria-label="Star prop">${st?'★':'☆'}</button></div>
     <div class="pl-top-bet"><b>Over ${p.line} ${E(p.market)}</b><span class="pl-odds">${fmtOdds(p.odds)}</span>
       <span class="pl-ev ${s.ev>0?'good':'bad'}">EV ${sgn(Math.round(s.ev*100))}%</span></div>
+    <div class="pl-sub" style="margin:2px 0 4px">${ourHtml(p)}</div>
     ${probBar(s)}
     <div class="pl-whys">${dotsHtml(s)}${reasons(p)}${more?`<span class="pl-why more" data-player="${E(p.player)}">+${more} more</span>`:''}</div>
   </div>`;
@@ -2054,7 +2086,7 @@ function propRow(p,more){
   return `<div class="pl-row2" data-prop="${idx}">
     ${gradeBadge(s)}
     <div style="min-width:0"><div class="pl-name">${E(p.player)} <span class="pl-sub">${E(roleShort(p.player,p.pos))} vs ${E(p.opp)}</span></div>
-      <div class="pl-sub">O ${p.line} ${E(p.market)} · <b class="pl-odds-s">${fmtOdds(p.odds)}</b>${more?` · <span class="pl-more" data-player="${E(p.player)}">+${more} more</span>`:''}</div>
+      <div class="pl-sub">O ${p.line} ${E(p.market)} · <b class="pl-odds-s">${fmtOdds(p.odds)}</b> · ${ourHtml(p,'')}${more?` · <span class="pl-more" data-player="${E(p.player)}">+${more} more</span>`:''}</div>
       <div class="pl-mini"><div class="pl-ptrack"><div class="pl-pfill ${s.pModel>=s.imp?'up':'dn'}" style="left:${Math.min(s.imp,s.pModel)*100}%;width:${Math.max(Math.abs(s.pModel-s.imp)*100,1)}%"></div><div class="pl-ptick" style="left:${s.imp*100}%"></div></div>
         <span class="pl-sub">${pct(s.imp)} → <b class="${s.pModel>=s.imp?'good':'bad'}">${pct(s.pModel)}</b></span></div></div>
     <div class="pl-rt"><b class="pl-ev ${s.ev>0?'good':'bad'}">${sgn(Math.round(s.ev*100))}%</b>${dotsHtml(s)}
@@ -2157,6 +2189,8 @@ function gradeBox(p){
     ${row('Projection',pct(s.pProj),s.td?`props.cash ${PL.sport==='nba'?'':'TD '}probability`:(p.projection!=null?`props.cash projects ${(+p.projection).toFixed(1)} vs ${p.line}`:'none'), s.dots.proj>0?'good':s.dots.proj<0?'bad':'')}
     ${row('Matchup nudge',(s.adj>=0?'+':'')+s.adj.toFixed(2),`${s.tsig?`${E(p.opp)} vs ${E(lowerFirst(TYPE_LBL(s.tsig.ty)))}: ${s.tsig.overs}/${s.tsig.n} over · `:(()=>{const ty=typeOf(p.player,p.pos,p.market),st=ty&&typeStats(p.opp,p.pos,p.market)[ty];return st&&st.cur.n?`${E(p.opp)} vs ${E(lowerFirst(TYPE_LBL(ty)))}: ${st.cur.overs}/${st.cur.n} over (too few to count) · `:'';})()}${p.dvp!=null?`${E(p.opp)} ${ord(p.dvp)} vs ${E(p.pos)}s`:''}${p.matchupRating!=null&&p.matchupRating>=0?` · rating ${p.matchupRating}/100`:''}`, s.dots.match>0?'good':s.dots.match<0?'bad':'')}
     ${row('Model vs book',`${pct(s.pModel)} vs ${pct(s.imp)}`,'halfway from the book toward the blend, plus matchup', s.pModel>=s.imp?'good':'bad')}
+    ${row('Our price',`${fmtOdds(fairOdds(s.pModel))} vs ${fmtOdds(p.odds)}`,`fair odds for the over at ${p.line} from the model's ${pct(s.pModel)}, no vig`, s.pModel>=s.imp?'good':'bad')}
+    ${(()=>{ const ol=ourLine(p); return ol? row('Our line',`${olTxt(ol)} vs ${p.line}`,`where the model has the over at 50%${POIS.has(p.marketKey)?` (expected ${ol.mean.toFixed(1)})`:` (model median ${ol.mean.toFixed(1)})`}`, ol.line>p.line?'good':ol.line<p.line?'bad':'') : row('Our line','–','no line for anytime-TD markets: use our price'); })()}
     ${s.inj?row('Injury report',E(s.inj),'props.cash roster activity',/^(out|doubtful)$/i.test(s.inj)?'bad':''):''}
     ${(s.caps||[]).length?`<div class="pl-note">${s.caps.map(E).join(' · ')}. Rules added 10/23 from the NBA results review: long-odds and weak-market plays stopped winning at their grade.</div>`:''}
   </div>`;
