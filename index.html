@@ -168,6 +168,10 @@
   .pl-stats{display:flex;gap:10px;font-size:12px;text-align:right;}
   .pl-stats div{min-width:38px;} .pl-stats b{display:block;font-size:13px;}
   .pl-star{background:none;border:0;color:var(--sub);font-size:17px;cursor:pointer;padding:0;}
+  .pl-copy{background:none;border:1px solid var(--border);color:var(--sub);font-size:11px;font-weight:600;cursor:pointer;padding:3px 7px;border-radius:999px;line-height:1.2;}
+  .pl-copy:hover{color:var(--text);border-color:var(--accent);}
+  .pl-copy.done{color:#22c98a;border-color:#22c98a;}
+  .pl-wu{white-space:pre-wrap;font-size:13px;line-height:1.5;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px;}
   .pl-star.on{color:var(--gold);}
   .good{color:var(--accent2);} .bad{color:var(--bad);} .mut{color:var(--sub);}
   .pl-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
@@ -2028,6 +2032,29 @@ function ourHtml(p, cls){
   const ln = ol? ` · our line <b class="${ol.line>p.line?'good':ol.line<p.line?'bad':''}">${olTxt(ol)}</b>` : '';
   return `<span class="${cls||'pl-sub'}" title="Our price = the model's ${pct(s.pModel)} as no-vig odds. Our line = where the model has the over at 50%.">our <b>${fmtOdds(fo)}</b>${ln}</span>`;
 }
+/* ---- 2026-10-27: one-tap write-up for posting a pick (e.g. Action Network) ---- */
+function writeUp(p){
+  const s=scoreProp(p), ol=ourLine(p), fo=fairOdds(s.pModel), sg=signals(p);
+  const mkt=String(p.market).toLowerCase().replace(/^1q/,'1Q').replace(/\btd\b/,'TD');
+  const edge=sgn(Math.round(s.ev*100))+'%';
+  const bet = s.td ? `${p.player} ${mkt}` : `${p.player} over ${p.line} ${mkt}`;
+  let t=`${bet} (${fmtOdds(p.odds)}) vs ${p.opp} is showing a ${edge} edge${s.grade?` (Grade ${s.grade})`:''}. `;
+  const prob=`${pct(s.pModel)} vs the ${pct(s.imp)} the price implies`;
+  t+= !ol ? `My model gives it ${prob}, a fair price of ${fmtOdds(fo)}.`
+     : ol.line>p.line ? `My model has this line closer to ${olTxt(ol)} and gives the over ${prob} (fair price ${fmtOdds(fo)}).`
+     : `My line is right at ${olTxt(ol)}, so the value is in the price: the model gives the over ${prob} (fair price ${fmtOdds(fo)}).`;
+  const why=sg.F.slice(0,3).map(x=>x.replace(/\.$/,''));
+  if(why.length) t+=` Supporting: ${why.join('; ')}.`;
+  if(sg.A.length) t+=` Risk: ${sg.A[0].replace(/\.$/,'')}.`;
+  return t;
+}
+function copyText(t, btn){
+  const done=()=>{ if(btn){ const o=btn.textContent; btn.textContent='Copied ✓'; btn.classList.add('done'); setTimeout(()=>{ btn.textContent=o; btn.classList.remove('done'); },1600); } };
+  const fallback=()=>{ const ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){ prompt('Copy this write-up:', t); } ta.remove(); };
+  if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, fallback); else fallback();
+}
+const copyBtn = (idx,lbl)=>`<button class="pl-copy" data-copy="${idx}" title="Copy a write-up of this pick">${lbl||'Copy'}</button>`;
 function dotsHtml(s){
   const one=(k,l)=>`<span class="pl-dot ${s.dots[k]>0?'g':s.dots[k]<0?'r':''}" title="${l}"></span>`;
   return `<span class="pl-dots" aria-label="${s.green} of 3 signals agree">${one('hist','History')}${one('proj','Projection')}${one('match','Matchup')}</span>`;
@@ -2073,7 +2100,7 @@ function topCard(p,more){
     <div class="pl-top-h">${gradeBadge(s,true)}
       <div style="flex:1;min-width:0"><div class="pl-name">${E(p.player)} <span class="pl-sub">${E(p.team)} ${E(p.pos)}</span></div>
         <div class="pl-sub">vs ${E(p.opp)}${g?' · '+E(g.kickoff):''}</div></div>
-      <button class="pl-star ${st?'on':''}" data-star="${idx}" aria-label="Star prop">${st?'★':'☆'}</button></div>
+      ${copyBtn(idx)}<button class="pl-star ${st?'on':''}" data-star="${idx}" aria-label="Star prop">${st?'★':'☆'}</button></div>
     <div class="pl-top-bet"><b>Over ${p.line} ${E(p.market)}</b><span class="pl-odds">${fmtOdds(p.odds)}</span>
       <span class="pl-ev ${s.ev>0?'good':'bad'}">EV ${sgn(Math.round(s.ev*100))}%</span></div>
     <div class="pl-sub" style="margin:2px 0 4px">${ourHtml(p)}</div>
@@ -2090,7 +2117,7 @@ function propRow(p,more){
       <div class="pl-mini"><div class="pl-ptrack"><div class="pl-pfill ${s.pModel>=s.imp?'up':'dn'}" style="left:${Math.min(s.imp,s.pModel)*100}%;width:${Math.max(Math.abs(s.pModel-s.imp)*100,1)}%"></div><div class="pl-ptick" style="left:${s.imp*100}%"></div></div>
         <span class="pl-sub">${pct(s.imp)} → <b class="${s.pModel>=s.imp?'good':'bad'}">${pct(s.pModel)}</b></span></div></div>
     <div class="pl-rt"><b class="pl-ev ${s.ev>0?'good':'bad'}">${sgn(Math.round(s.ev*100))}%</b>${dotsHtml(s)}
-      <button class="pl-star ${st?'on':''}" data-star="${idx}" aria-label="Star prop">${st?'★':'☆'}</button></div>
+      ${copyBtn(idx)}<button class="pl-star ${st?'on':''}" data-star="${idx}" aria-label="Star prop">${st?'★':'☆'}</button></div>
   </div>`;
 }
 function chips(name,list,cur){ return `<div class="pl-chiprow" data-chip="${name}">${list.map(([v,l])=>`<span class="pl-chipb ${cur===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>`; }
@@ -2192,6 +2219,8 @@ function gradeBox(p){
     ${row('Our price',`${fmtOdds(fairOdds(s.pModel))} vs ${fmtOdds(p.odds)}`,`fair odds for the over at ${p.line} from the model's ${pct(s.pModel)}, no vig`, s.pModel>=s.imp?'good':'bad')}
     ${(()=>{ const ol=ourLine(p); return ol? row('Our line',`${olTxt(ol)} vs ${p.line}`,`where the model has the over at 50%${POIS.has(p.marketKey)?` (expected ${ol.mean.toFixed(1)})`:` (model median ${ol.mean.toFixed(1)})`}`, ol.line>p.line?'good':ol.line<p.line?'bad':'') : row('Our line','–','no line for anytime-TD markets: use our price'); })()}
     ${s.inj?row('Injury report',E(s.inj),'props.cash roster activity',/^(out|doubtful)$/i.test(s.inj)?'bad':''):''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px"><b style="font-size:13px">Write-up</b>${copyBtn(PL.data.props.indexOf(p),'Copy write-up')}</div>
+    <div class="pl-wu">${E(writeUp(p))}</div>
     ${(s.caps||[]).length?`<div class="pl-note">${s.caps.map(E).join(' · ')}. Rules added 10/23 from the NBA results review: long-odds and weak-market plays stopped winning at their grade.</div>`:''}
   </div>`;
 }
@@ -2382,6 +2411,7 @@ function render(){
 }
 function wire(root){
   root.querySelectorAll('[data-plview]').forEach(b=>b.onclick=()=>{ PL.view=b.dataset.plview; try{localStorage.setItem('props_view',PL.view);}catch(e){} render(); });
+  root.querySelectorAll('[data-copy]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); copyText(writeUp(PL.data.props[+b.dataset.copy]), b); });
   root.querySelectorAll('[data-star]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=starKey(PL.data.props[+b.dataset.star]); PL.stars.has(k)?PL.stars.delete(k):PL.stars.add(k); saveStars(); render(); });
   root.querySelectorAll('[data-prop]').forEach(r=>r.onclick=()=>{ PL.prop=PL.data.props[+r.dataset.prop]; PL.cardTab='player'; PL.returnTo=PL.view==='player'?(PL.returnTo||'screener'):PL.view; PL.view='player'; PL.logOpen=false; render(); window.scrollTo(0,0); });
   root.querySelectorAll('[data-game]').forEach(c=>c.onclick=()=>{ PL.game=c.dataset.game; render(); });
