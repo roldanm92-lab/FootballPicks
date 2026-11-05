@@ -1,0 +1,142 @@
+<title>Agent Play Card</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a betting slip ledger — summary strip, filter bar, then one ticket per play */
+:root{
+  --bg:#f3f5f2; --panel:#ffffff; --ink:#18201b; --muted:#5d6b62; --line:#d9e0da;
+  --turf:#1f6b45; --turf-soft:#e2efe7; --amber:#a5620b; --amber-soft:#f6ead8; --red:#a63d2f; --red-soft:#f5e1dd;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111613; --panel:#1a211d; --ink:#e6ece7; --muted:#97a69c; --line:#2c3630;
+  --turf:#5fc08b; --turf-soft:#1d3527; --amber:#e0a14a; --amber-soft:#3a2c17; --red:#e47c6c; --red-soft:#3d221d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111613; --panel:#1a211d; --ink:#e6ece7; --muted:#97a69c; --line:#2c3630;
+  --turf:#5fc08b; --turf-soft:#1d3527; --amber:#e0a14a; --amber-soft:#3a2c17; --red:#e47c6c; --red-soft:#3d221d; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{max-width:980px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+h1{font:700 2.4rem/1 var(--display);letter-spacing:.01em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0}
+.back{color:var(--muted);font-size:.9rem;text-decoration:none;display:inline-block;margin-bottom:8px}
+.back:hover{color:var(--ink)}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:grid;gap:8px}
+.note h2{font:700 1.1rem var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0}
+.note p{margin:0;max-width:70ch}
+.bt{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.bt div{border-left:3px solid var(--line);padding-left:10px}
+.bt b{font:500 1.3rem var(--mono);display:block}
+.bt .pos b{color:var(--turf)} .bt .neg b{color:var(--red)}
+.bt span{color:var(--muted);font-size:.85rem}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar label{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+select,button{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--turf);outline-offset:2px}
+.count{margin-left:auto;color:var(--muted);font-size:.9rem}
+.list{display:grid;gap:12px}
+.t{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:grid;gap:10px;min-width:0}
+.top{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.pick{font:700 1.45rem/1.1 var(--display);letter-spacing:.01em}
+.who{color:var(--muted);font-size:.9rem}
+.chip{font:600 .72rem var(--body);text-transform:uppercase;letter-spacing:.08em;padding:3px 8px;border-radius:99px}
+.Strong{background:var(--turf-soft);color:var(--turf)} .Lean{background:var(--amber-soft);color:var(--amber)} .Watch{background:var(--line);color:var(--muted)}
+.odds{font:500 .95rem var(--mono);margin-left:auto}
+.why{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 18px}
+.why div{min-width:0}
+.k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.v{font-variant-numeric:tabular-nums}
+.games{font:400 .8rem var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.risk{background:var(--red-soft);color:var(--red);border-radius:6px;padding:6px 10px;font-size:.88rem}
+.empty{color:var(--muted);padding:20px;text-align:center}
+@media (prefers-reduced-motion:no-preference){.t{transition:border-color .15s}.t:hover{border-color:var(--muted)}}
+</style>
+
+<div class="wrap">
+  <header>
+    <a class="back" href="index.html">← Back to picks</a>
+    <h1>Agent Play Card</h1>
+    <p class="sub" id="sub"></p>
+  </header>
+
+  <section class="note">
+    <h2>How far to trust this</h2>
+    <p>The agent was replayed on every NFL prop this season, using only games played before each one, with each price carrying the books' real hold (about 7%). A play shows here only if it passes a setting that beat the price in that replay. Results swung week to week, so treat this as a shortlist, not a lock.</p>
+    <div class="bt" id="bt"></div>
+    <p><strong>Prices:</strong> unders show the books' consensus under price and the best book where props.cash lists both sides. When it doesn't, the under price is estimated from the over and the play is capped at Lean; check it at your book. Re-check injuries close to game time.</p>
+  </section>
+
+  <div class="bar" role="group" aria-label="Filters">
+    <label for="sport">Sport</label>
+    <select id="sport"><option value="all">All</option><option value="nfl">NFL</option><option value="nba">NBA</option></select>
+    <label for="game">Game</label>
+    <select id="game"><option value="all">All games</option></select>
+    <label for="side">Side</label>
+    <select id="side"><option value="all">Overs &amp; unders</option><option value="Over">Overs only</option><option value="Under">Unders only</option></select>
+    <button id="strong" aria-pressed="false">Strong only</button>
+    <button id="best" aria-pressed="true">Best play per player</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="list" id="list"></div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const BT = DATA.summary || [];
+document.getElementById('bt').innerHTML = BT.map(s => `<div class="${s.roi >= 0 ? 'pos' : 'neg'}"><b>${s.roi >= 0 ? '+' : '−'}${Math.abs(s.roi * 100).toFixed(1)}%</b><span>${s.label}, ${s.n} replayed bets</span></div>`).join('');
+const NAMES = {arch:'Archetype vs defense', pos:'Position vs defense', comps:'Comps vs defense', form:'Own hit rate', proj:'Projection', dvp:'Defense rank'};
+const $ = id => document.getElementById(id);
+const pct = x => x == null ? '–' : Math.round(x * 100) + '%';
+const fmtOdds = o => o == null ? '' : (o > 0 ? '+' + o : '' + o);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const state = {sport:'all', game:'all', side:'all', strong:false, best:true};
+
+$('sub').textContent = `NFL data ${DATA.scraped.nfl} · NBA data ${DATA.scraped.nba} · ${DATA.plays.length} plays passed the agent's checks`;
+const games = [...new Map(DATA.plays.map(p => [p.game, p.kickoff])).entries()];
+for (const [g, k] of games) { const o = document.createElement('option'); o.value = g; o.textContent = `${g} · ${k ?? ''}`; $('game').append(o); }
+
+function reasons(p) {
+  const out = [];
+  const a = p.arch_sum, s = p.pos_sum;
+  if (a.n) out.push(['Same type vs ' + p.opp, `${p.arch} players went over ${a.overs} of ${a.n} (${pct(a.rate)}); the price implied ${pct(a.imp)}. Median ${a.med > 0 ? '+' : ''}${a.med} vs their line.`,
+    p.arch_games.map(g => `${g[0]} ${g[1]}→${g[2]} (${g[3]})`).join(' · ')]);
+  if (s.n) out.push(['All ' + p.pos + 's vs ' + p.opp, `Over ${s.overs} of ${s.n} (${pct(s.rate)}), priced at ${pct(s.imp)}. Median ${s.med > 0 ? '+' : ''}${s.med}.`, '']);
+  if (p.comp_games.length) out.push(['Comps vs ' + p.opp, `Closest comps: ${p.comps.map(c => c[0]).slice(0,3).join(', ')}.`,
+    p.comp_games.map(g => `${g[0]} ${g[1]}→${g[2]} ${g[3]}`).join(' · ')]);
+  const f = p.form;
+  const extra = p.tdProb != null ? `TD chance ${p.tdProb}%` : (p.projection != null ? `Projection ${p.projection}` : '');
+  out.push(['Player & market', `Hit L10 ${f.L10 ?? '–'}%, season ${f.season ?? '–'}% (${f.n} gms), L10 avg ${f.l10avg ?? '–'}. ${extra}. Defense rank ${p.dvp ?? '–'} (1 = toughest).`,
+    `Game total ${p.total ?? '–'}, spread ${p.fav ?? ''} ${p.spread ?? ''}`]);
+  return out;
+}
+
+function render() {
+  let ps = DATA.plays.filter(p => (state.sport === 'all' || p.sport === state.sport) &&
+    (state.game === 'all' || p.game === state.game) && (state.side === 'all' || p.side === state.side) && (!state.strong || p.conf === 'Strong'));
+  const rank = {Strong:0, Lean:1, Watch:2};
+  ps.sort((a, b) => rank[a.conf] - rank[b.conf] || Math.abs(b.core) - Math.abs(a.core));
+  if (state.best) { const seen = new Set(); ps = ps.filter(p => !seen.has(p.player) && seen.add(p.player)); }
+  $('count').textContent = `${ps.length} shown`;
+  $('list').innerHTML = ps.length ? ps.map(p => `
+    <article class="t">
+      <div class="top">
+        <span class="pick">${esc(p.player)} ${p.side} ${p.line} ${esc(p.market)}</span>
+        <span class="chip ${p.conf}">${p.conf}</span>
+        <span class="odds">${fmtOdds(p.odds)}${p.price_est ? ' est.' : ''}${p.best_book && p.best_odds !== p.odds ? ` · best ${fmtOdds(p.best_odds)} ${esc(p.best_book)}` : ''}</span>
+      </div>
+      <div class="who">${esc(p.pos)} · ${esc(p.arch ?? 'no type')} · ${esc(p.team)} vs ${esc(p.opp)} · ${esc(p.kickoff ?? '')} · agrees: ${p.agree.map(k => NAMES[k]).join(', ')}</div>
+      <div class="why">${reasons(p).map(r => `<div><div class="k">${esc(r[0])}</div><div class="v">${esc(r[1])}</div>${r[2] ? `<div class="games">${esc(r[2])}</div>` : ''}</div>`).join('')}</div>
+      ${p.risks.filter(r => !r.startsWith('thin')).length ? `<div class="risk">Risk: ${esc(p.risks.filter(r => !r.startsWith('thin')).join('; '))}</div>` : ''}
+      ${p.teammates_out.length ? `<div class="who">Teammates out: ${esc(p.teammates_out.join(', '))}</div>` : ''}
+    </article>`).join('') : '<p class="empty">No plays match these filters.</p>';
+}
+$('sport').onchange = e => { state.sport = e.target.value; render(); };
+$('game').onchange = e => { state.game = e.target.value; render(); };
+$('side').onchange = e => { state.side = e.target.value; render(); };
+for (const id of ['strong', 'best']) $(id).onclick = e => { state[id] = !state[id]; e.target.setAttribute('aria-pressed', state[id]); render(); };
+render();
+</script>
