@@ -2578,25 +2578,34 @@ function targetView(p){
   return s;
 }
 
-/* ===== props-targets-list v1 (board_upgrades.py): Targets view - every prop ranked by how often players like him beat this line vs this defense ===== */
-PL.tg = PL.tg || {min:3, sort:'rate', group:'', pos:'', search:'', side:'over'};
+/* ===== props-targets-list v2 (board_upgrades.py): Targets view - every prop ranked by how often players like him beat this line vs this defense ===== */
+PL.tg = PL.tg || {min:3, sort:'rate', group:'', pos:'', search:'', side:'over', win:'season', grp:'type'};
+try{ const sv=JSON.parse(localStorage.getItem('targets_view')||'null'); if(sv){ ['win','grp','min','sort'].forEach(k=>{ if(k in sv) PL.tg[k]=sv[k]; }); } }catch(e){}
+function tgSave(){ try{ localStorage.setItem('targets_view', JSON.stringify({win:PL.tg.win,grp:PL.tg.grp,min:PL.tg.min,sort:PL.tg.sort})); }catch(e){} }
+// order of each defense's games, newest first (0 = most recent), from every row in its log
+function tgGameRank(tm){ const D=PL.data; D._tgGames=D._tgGames||{}; if(D._tgGames[tm]) return D._tgGames[tm];
+  const key=r=>{ const m=String(r.date||'').match(/(\d+)\/(\d+)/); if(!m) return 0; const mo=+m[1], d=+m[2]; return (+r.season||0)*10000+(mo<8?mo+12:mo)*100+d; };
+  const ks=new Set(); Object.values(((D.teams||{})[tm]||{}).vsPosLog||{}).forEach(mm=>Object.values(mm).forEach(rs=>rs.forEach(r=>ks.add(key(r)))));
+  const order=[...ks].sort((a,b)=>b-a), rank={}; order.forEach((k,i)=>rank[k]=i);
+  return D._tgGames[tm]={rank, key}; }
 function tgPool(ps, M){
   // every row for this market (and position, or all positions for '*') across every defense, typed once
   const D=PL.data; D._tgPool=D._tgPool||{}; const key=ps+'|'+M; if(D._tgPool[key]) return D._tgPool[key];
   const out=[], cur={v:0};
   Object.entries(D.teams||{}).forEach(([tm,t])=>{ const lg=t.vsPosLog||{};
     const rows= ps==='*' ? Object.values(lg).flatMap(m=>m[M]||[]) : ((lg[ps]||{})[M]||[]);
-    rows.forEach(r=>{ out.push({tm, r, ty:typeOf(r.player, ps==='*'?null:ps, M)}); if(r.season>cur.v) cur.v=r.season; }); });
+    const gr=tgGameRank(tm); rows.forEach(r=>{ out.push({tm, r, rank:gr.rank[gr.key(r)], ty:typeOf(r.player, ps==='*'?null:ps, M)}); if(r.season>cur.v) cur.v=r.season; }); });
   out.cur=cur.v; return D._tgPool[key]=out;
 }
 function targetStats(p){
-  const D=PL.data; D._tgc=D._tgc||new Map(); if(D._tgc.has(p)) return D._tgc.get(p);
+  const D=PL.data, W=PL.tg.win, G=PL.tg.grp, ck=W+'|'+G; D._tgc=D._tgc||{}; const C=D._tgc[ck]=D._tgc[ck]||new Map(); if(C.has(p)) return C.get(p);
   const nba=PL.sport==='nba', o=p.opp, L=+p.line, under=p.side==='U', M=p.market, pos=p.pos;
-  const ty=typeOf(p.player,pos,M);
+  const ty= G==='pos' ? null : typeOf(p.player,pos,M);
+  const inWin=x=> W==='l5' ? x.rank<5 : W==='l10' ? x.rank<10 : x.r.season===cur;
   const beat=r=> under ? (+r.result < L) : (+r.result > L);
-  const pick=(ps)=>{ const pool=tgPool(ps,M), cur=pool.cur;
-    const mine=pool.filter(x=>x.tm===o && x.r.season===cur && (!ty || x.ty===ty)).map(x=>x.r);
-    const oth=pool.filter(x=>x.tm!==o && x.r.season===cur && (!ty || x.ty===ty)).map(x=>x.r);
+  let cur=0; const pick=(ps)=>{ const pool=tgPool(ps,M); cur=pool.cur;
+    const mine=pool.filter(x=>x.tm===o && inWin(x) && (!ty || x.ty===ty)).map(x=>x.r);
+    const oth=pool.filter(x=>x.tm!==o && inWin(x) && (!ty || x.ty===ty)).map(x=>x.r);
     return {mine, oth}; };
   let scope=pos, m=pick(pos);
   if(nba && ty && m.mine.length<3){ const a=pick('*'); if(a.mine.length>m.mine.length){ scope='*'; m=a; } }
@@ -2607,7 +2616,7 @@ function targetStats(p){
   const on=m.oth.length, oh=m.oth.filter(beat).length;
   const out={ty, scope, n, h, rate:n?h/n:null, avg, med, on, oh, orate:on>=8?oh/on:null,
     who:(ty?TYPE_LBL(ty):`${pos}s`)+(nba&&ty&&scope==='*'?' (any pos)':'')};
-  D._tgc.set(p,out); return out;
+  C.set(p,out); return out;
 }
 function targetsList(){
   const T=PL.tg, P=(PL.data.props||[]);
@@ -2618,6 +2627,7 @@ function targetsList(){
   const lift=x=> x.t.orate==null ? 0 : x.t.rate-x.t.orate;
   const cmp={rate:(a,b)=> b.t.rate-a.t.rate || b.t.n-a.t.n || b.t.avg-a.t.avg,
              margin:(a,b)=> b.t.avg-a.t.avg || b.t.rate-a.t.rate,
+             low:(a,b)=> a.t.rate-b.t.rate || b.t.n-a.t.n || a.t.avg-b.t.avg,
              lift:(a,b)=> lift(b)-lift(a) || b.t.rate-a.t.rate,
              games:(a,b)=> b.t.n-a.t.n || b.t.rate-a.t.rate}[T.sort]||((a,b)=>0);
   rows.sort(cmp);
@@ -2627,13 +2637,15 @@ function targetsList(){
   let s=`<div class="pl-filters">
     ${GROUP_LBL.length?`<div class="pl-chiprow" data-tgchip="group">${GROUP_LBL.map(([v,l])=>`<span class="pl-chipb ${T.group===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>`:''}
     <div class="pl-chiprow" data-tgchip="pos">${[['','All pos']].concat(POSITIONS.map(x=>[x,x])).map(([v,l])=>`<span class="pl-chipb ${T.pos===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
+    <div class="pl-chiprow" data-tgchip="win">${[['l5','Last 5 games'],['l10','Last 10 games'],['season','Full season']].map(([v,l])=>`<span class="pl-chipb ${T.win===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
+    <div class="pl-chiprow" data-tgchip="grp">${[['type',PL.sport==='nba'?'Same archetype':'Same player type'],['pos','Same position']].map(([v,l])=>`<span class="pl-chipb ${T.grp===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
     <div class="pl-chiprow" data-tgchip="min">${[[1,'1+ games'],[3,'3+ games'],[5,'5+ games'],[8,'8+ games']].map(([v,l])=>`<span class="pl-chipb ${T.min===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
     <div class="pl-bar" style="margin:6px 0 0">
       <input id="tgSearch" placeholder="Search player or team" value="${E(T.search)}">
-      <select id="tgSort">${[['rate','Hit rate'],['margin','Avg margin'],['lift','Hit rate vs others'],['games','Most games']].map(([v,l])=>`<option value="${v}" ${T.sort===v?'selected':''}>Sort: ${l}</option>`).join('')}</select>
+      <select id="tgSort">${[['rate','Hit rate (best first)'],['low','Hit rate (worst first)'],['margin','Avg margin'],['lift','Hit rate vs others'],['games','Most games']].map(([v,l])=>`<option value="${v}" ${T.sort===v?'selected':''}>Sort: ${l}</option>`).join('')}</select>
       ${hasUnder?`<select id="tgSide"><option value="over" ${T.side!=='under'?'selected':''}>Overs</option><option value="under" ${T.side==='under'?'selected':''}>Unders</option></select>`:''}
     </div></div>
-  <div class="pl-sub" style="margin:8px 2px">${rows.length} props · games not started · ranked by how often ${PL.sport==='nba'?'the same archetype':'the same type of player'} beat <b style="color:var(--text)">this line</b> against this defense this season.</div>`;
+  <div class="pl-sub" style="margin:8px 2px">${rows.length} props · games not started · ranked by how often ${T.grp==='pos'?'players at the same position':PL.sport==='nba'?'the same archetype':'the same type of player'} beat <b style="color:var(--text)">this line</b> against this defense ${T.win==='l5'?'in its last 5 games':T.win==='l10'?'in its last 10 games':'this season'}.</div>`;
   if(!shown.length) s+=`<div class="pl-card pl-sub">No props match. Try fewer games (1+) or clear a filter.</div>`;
   s+=`<div class="pl-card" style="padding:4px 8px">${shown.map((x,i)=>{ const p=x.t, pr=x.p, idx=P.indexOf(pr), r=p.rate, l=lift(x);
       const col=r>=.75?'var(--accent2)':r>=.6?'#8fb0ff':r>=.4?'var(--sub)':'var(--bad)';
@@ -2646,7 +2658,7 @@ function targetsList(){
         <div class="pl-rt"><b style="font-size:17px;color:${col}">${p.h}/${p.n}</b><span class="pl-sub">${Math.round(r*100)}%</span>
           ${p.orate!=null?`<span class="pl-sub ${l>=.15?'good':l<=-.15?'bad':''}" style="font-size:11px">${l>=0?'+':''}${Math.round(l*100)} vs others</span>`:''}</div></div>`; }).join('')}</div>
   ${rows.length>shown.length?`<button class="btn" id="tgMore" style="width:100%;margin-bottom:10px">Show ${Math.min(100,rows.length-shown.length)} more</button>`:''}
-  <div class="pl-note" style="margin:0 2px 14px">For each prop: every ${PL.sport==='nba'?'player of the same archetype':'player of the same type'} (NFL WR slot/outside/hybrid, RB receiving/non-receiving or run style; TE/QB = whole position${PL.sport==='nba'?'; NBA falls back to any position when his position has under 3 games':''}) who had this market against this defense this season, checked against <b>this</b> line. Avg = average result minus the line. Others = same group vs every other defense; the tick on the bar marks it. Tap a row for the full Target breakdown.</div>`;
+  <div class="pl-note" style="margin:0 2px 14px">For each prop: every ${PL.sport==='nba'?'player of the same archetype':'player of the same type'} (NFL WR slot/outside/hybrid, RB receiving/non-receiving or run style; TE/QB = whole position${PL.sport==='nba'?'; NBA falls back to any position when his position has under 3 games':''}) who had this market against this defense this season, checked against <b>this</b> line. Avg = average result minus the line. Others = same group vs every other defense; the tick on the bar marks it. Last 5 / Last 10 = the defense's most recent 5 or 10 games (can reach back into last season); Full season = this season only. Tap a row for the full Target breakdown (season numbers).</div>`;
   return s;
 }
 
@@ -2717,8 +2729,8 @@ function wire(root){
   root.querySelectorAll('[data-player]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); PL.f.search=el.dataset.player; PL.f.onePer=false; PL.f.grade='all'; render(); window.scrollTo(0,0); });
   on('#plStarOnly','onclick',()=>{ PL.f.starred=!PL.f.starred; render(); });
   root.querySelectorAll('[data-tprop]').forEach(r=>r.onclick=()=>{ PL.prop=PL.data.props[+r.dataset.tprop]; PL.cardTab='target'; PL.returnTo='targets'; PL.view='player'; PL.logOpen=false; render(); window.scrollTo(0,0); });
-  root.querySelectorAll('[data-tgchip]').forEach(row=>row.querySelectorAll('[data-v]').forEach(c=>c.onclick=()=>{ const k=row.dataset.tgchip; PL.tg[k]= k==='min' ? +c.dataset.v : c.dataset.v; PL.limit=100; render(); }));
-  on('#tgSort','onchange',e=>{ PL.tg.sort=e.target.value; render(); });
+  root.querySelectorAll('[data-tgchip]').forEach(row=>row.querySelectorAll('[data-v]').forEach(c=>c.onclick=()=>{ const k=row.dataset.tgchip; PL.tg[k]= k==='min' ? +c.dataset.v : c.dataset.v; PL.limit=100; tgSave(); render(); }));
+  on('#tgSort','onchange',e=>{ PL.tg.sort=e.target.value; tgSave(); render(); });
   on('#tgSide','onchange',e=>{ PL.tg.side=e.target.value; render(); });
   on('#tgMore','onclick',()=>{ PL.limit+=100; render(); });
   on('#tgSearch','oninput',e=>{ PL.tg.search=e.target.value; const pos=e.target.selectionStart; render(); const s=q('#tgSearch'); if(s){ s.focus(); s.setSelectionRange(pos,pos); } });
