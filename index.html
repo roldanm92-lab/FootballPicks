@@ -252,6 +252,52 @@
   /* sport tab row scrolls sideways on phones (added by build_action_daily.py) */
   @media (max-width:560px){ .sporttabs{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     .sporttabs::-webkit-scrollbar{display:none} .sporttab{flex:0 0 auto;padding:10px 12px;font-size:13px;white-space:nowrap} }
+
+  /* ===== board-upgrades v1 (board_upgrades.py): sport dropdown, started filter, Top Bets ===== */
+  .sporttabs{display:none !important;}
+  .sportbar{display:flex;gap:8px;align-items:center;padding:0 0 8px;}
+  .sportsel{flex:1;min-width:0;-webkit-appearance:none;appearance:none;background-color:var(--panel);color:var(--text);
+    border:1px solid var(--border);border-radius:var(--radius);padding:10px 36px 10px 12px;font-size:15px;font-weight:700;
+    letter-spacing:.02em;cursor:pointer;font-family:inherit;
+    background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;}
+  .sportsel:focus{outline:none;border-color:var(--accent);}
+  .startedtoggle{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--sub);white-space:nowrap;cursor:pointer;
+    padding:0 4px;user-select:none;}
+  .startedtoggle input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;margin:0;}
+  .game.started{border-color:rgba(242,169,60,.35);}
+  .livetag{display:inline-block;margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--warn);}
+  .tb-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 2px 6px;flex-wrap:wrap;}
+  .tb-head h2{font-size:16px;margin:0;}
+  .tb-head .sub{font-size:12px;color:var(--sub);}
+  .tb-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;
+    display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:start;cursor:pointer;}
+  .tb-card:hover{border-color:var(--accent);}
+  .tb-rank{font-size:15px;font-weight:800;color:var(--sub);text-align:center;padding-top:2px;}
+  .tb-meta{font-size:11px;color:var(--sub);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  .tb-sport{font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 6px;border-radius:5px;background:var(--panel2);
+    border:1px solid var(--border);color:var(--text);}
+  .tb-bet{font-size:15px;font-weight:700;margin:4px 0 2px;}
+  .tb-game{font-size:12px;color:var(--sub);}
+  .tb-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:64px;}
+  .tb-tier{font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;white-space:nowrap;}
+  .tb-tier.t1{background:rgba(34,201,138,.18);color:var(--accent2);}
+  .tb-tier.t2{background:rgba(79,124,255,.18);color:#8fb0ff;}
+  .tb-tier.t3{background:rgba(242,169,60,.14);color:var(--warn);}
+  .tb-score{font-size:11px;color:var(--sub);}
+  .tb-bar{width:64px;height:6px;border-radius:3px;background:var(--panel2);overflow:hidden;}
+  .tb-bar i{display:block;height:100%;background:var(--accent2);border-radius:3px;}
+  .tb-why{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
+  .tb-why span{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--panel2);color:var(--sub);border:1px solid var(--border);}
+  .tb-why span.g{color:var(--accent2);border-color:rgba(34,201,138,.4);}
+  .tb-why span.r{color:var(--bad);border-color:rgba(242,85,74,.4);}
+  .tb-star{font-size:18px;color:var(--sub);cursor:pointer;line-height:1;}
+  .tb-star.on{color:var(--gold);}
+  .tb-how{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin:14px 0 30px;}
+  .tb-how summary{cursor:pointer;font-size:13px;color:var(--sub);font-weight:600;}
+  .tb-how p,.tb-how li{font-size:12px;color:var(--sub);line-height:1.6;}
+  @media (max-width:560px){ .tb-card{grid-template-columns:22px minmax(0,1fr) auto;gap:8px;padding:10px;} .tb-bet{font-size:14px;} }
 </style>
 </head>
 <body>
@@ -265,8 +311,12 @@
       <div class="sporttab" data-sport="nhl">NHL</div>
       <a class="sporttab" href="action_daily.html" id="dailyTab" title="Every Action Network event today" style="text-decoration:none">Action Daily</a>
     </div>
+    <div class="sportbar" id="sportBar">
+      <select class="sportsel" id="sportSelect" aria-label="Sport"></select>
+    </div>
     <div class="viewtabs">
       <div class="viewtab active" data-view="board">Board</div>
+      <div class="viewtab" data-view="top">Top Bets</div>
       <div class="viewtab" data-view="props">Props Lab</div>
       <div class="viewtab" data-view="data">Data</div>
     </div>
@@ -274,6 +324,7 @@
       <input class="search" id="searchBox" placeholder="Search team, pick, or analyst…">
       <button class="btn" id="sortBtn">Sort: Time</button>
       <button class="btn" id="myPlaysBtn">★ My Plays</button>
+      <label class="startedtoggle" title="Games whose start time has passed are hidden unless this is ticked"><input type="checkbox" id="showStartedCb"><span>Show started <span id="showStartedCount"></span></span></label>
     </div>
   </div>
 
@@ -335,6 +386,7 @@
     <div id="gamesList"></div>
   </div>
 
+  <div id="topView" style="display:none;"></div>
   <div id="propsView" style="display:none;"></div>
 
   <div id="dataView" style="display:none;">
@@ -1124,9 +1176,15 @@ function dayStr(d){
 function timeStr(d){
   return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
+// 2026-11-04: a game has started once its kickoff time has passed or Action shows a live/final status.
+function gameStarted(g){
+  if(g.status) return true;
+  return !!(g.timeIsReal && g.date && g.date.getTime() <= Date.now());
+}
 function passesFilters(sport, g){
   const f = S[sport].filters;
   if(!matchesSearch(g,f.search)) return false;
+  if(!window.__SHOW_STARTED && gameStarted(g)) return false;
   if(f.dayFrom && g.date && dayStr(g.date) < f.dayFrom) return false;
   if(f.dayTo && g.date && dayStr(g.date) > f.dayTo) return false;
   if((f.timeFrom || f.timeTo) && g.timeIsReal){
@@ -1277,14 +1335,14 @@ function renderGameCard(sport, g){
   const isOpen = S[sport].openGames.has(gid) || autoOpen;
 
   const div = document.createElement('div');
-  div.className = 'game' + (isOpen?' open':'');
+  div.className = 'game' + (isOpen?' open':'') + (gameStarted(g)?' started':'');
   const timeLabel = g.timeIsReal ? g.date.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : 'TBD';
   const dateLabel = g.dateIsReal ? g.date.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'}) : '';
 
   const header = document.createElement('div');
   header.className = 'gh';
   header.innerHTML = `
-    <div class="time">${timeLabel}<div class="meta">${g.network||''}</div></div>
+    <div class="time">${timeLabel}<div class="meta">${g.network||''}</div>${gameStarted(g)?'<div class="livetag">'+esc(g.status||'Started')+'</div>':''}</div>
     <div class="teams">${esc(g.team2||'')}<span class="vs">@</span>${esc(g.team1||'')}
       <div class="meta">${g.bets?g.bets+' &middot; ':''}${totalTakers} pick${totalTakers===1?'':'s'}</div>
     </div>
@@ -1502,13 +1560,16 @@ function renderBoard(){
   const list = $('#gamesList');
   list.innerHTML='';
   let games = GAMES[sport].filter(g=>passesFilters(sport,g));
+  { const n = GAMES[sport].filter(gameStarted).length, el = document.getElementById('showStartedCount');
+    if(el) el.textContent = n ? '('+n+')' : ''; }
 
   if(!GAMES[sport].length){
     list.innerHTML = `<div class="empty">No ${sport.toUpperCase()} data loaded yet.<br>Go to the Data tab and load this week's ${sport==='cfb'?'picks.json':sport+'_picks.json'}.</div>`;
     return;
   }
   if(!games.length){
-    list.innerHTML = `<div class="empty">No games match your filters.</div>`;
+    const nS = GAMES[sport].filter(gameStarted).length;
+    list.innerHTML = `<div class="empty">No games match your filters.${(!window.__SHOW_STARTED && nS) ? '<br>'+nS+' game'+(nS>1?'s have':' has')+' already started \u2014 tick \u201cShow started\u201d to see '+(nS>1?'them':'it')+'.' : ''}</div>`;
     return;
   }
 
@@ -1619,6 +1680,9 @@ function switchView(view){
   $('#boardView').style.display = view==='board' ? '' : 'none';
   $('#dataView').style.display = view==='data' ? '' : 'none';
   $('#propsView').style.display = view==='props' ? '' : 'none';
+  $('#topView').style.display = view==='top' ? '' : 'none';
+  { const sb = document.getElementById('sportBar'); if(sb) sb.style.display = view==='top' ? 'none' : ''; }
+  if(view==='top' && window.TopBets) TopBets.render();
   if(view==='props'){ if(currentSport==='nhl') switchSport('nba'); if(currentSport==='cfb') switchSport('nfl'); if(currentSport==='ncaab') switchSport('nba'); if(window.PropsLab) PropsLab.render(); }
   $('#boardControls').style.display = view==='board' ? '' : 'none';
   $('#filterPanel').style.display = view==='board' ? '' : 'none';
@@ -1634,6 +1698,8 @@ function init(){
     $('#sortBtn').textContent = 'Sort: ' + (S[currentSport].sort==='time'?'Time':'Most picks');
     renderBoard();
   };
+  $('#showStartedCb').checked = false; window.__SHOW_STARTED = false;
+  $('#showStartedCb').onchange = (e)=>{ window.__SHOW_STARTED = e.target.checked; renderBoard(); };
   $('#myPlaysBtn').onclick = ()=>{
     showMyPlaysOnly = !showMyPlaysOnly;
     $('#myPlaysBtn').classList.toggle('active', showMyPlaysOnly);
@@ -1775,6 +1841,8 @@ function init(){
   window.__RAW = RAW;
   window.__GAMES = GAMES;
   window.__S = S;
+  window.__BOARD = {GAMES, S, gameTakers, playKey, savePlays, canonKey, gameStarted, switchSport, switchView,
+                    renderBoard, FAVORITE_EXPERTS, NBA_MODEL_TRUST_FROM};
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -2412,12 +2480,13 @@ function playerCard(){
       ${['2026','2025','H2H','L5','L10','L20','L30'].concat(Object.keys(h)).filter((k,i,a)=>h[k]!=null&&a.indexOf(k)===i).map(k=>[k,h[k]]).map(([k,v])=>`<div class="pl-cell">${SL(k)}${(p.hitN||{})[k]?` <span style="font-size:9px">(${p.hitN[k]})</span>`:''}<b class="${v>=70?'good':v<=40?'bad':''}">${v}%</b></div>`).join('')}</div></div>`;
   s+=gradeBox(p);
   s+=typeCard(p);
-  const sg=signals(p), tabs=[['player','Player'],['opp',`vs ${p.opp} defense`]];
+  const sg=signals(p), tabs=[['player','Player'],['opp',`vs ${p.opp} defense`],['target','Target']];
   s+=`<div class="pl-seg" data-seg="card" style="margin:0 0 10px">${tabs.map(([k,l])=>`<span class="${PL.cardTab===k?'on':''}" data-v="${k}" style="flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600">${E(l)}</span>`).join('')}</div>`;
   s+=`<div class="pl-card"><p class="pl-h">Signal check</p><div class="pl-sig">
     <div class="pl-for"><b class="good">For (${sg.F.length})</b><br>${sg.F.map(E).join('<br>')||'<span class="mut">Nothing yet</span>'}</div>
     <div class="pl-against"><b class="bad">Against (${sg.A.length})</b><br>${sg.A.map(E).join('<br>')||'<span class="mut">Nothing yet</span>'}</div></div></div>`;
   if(PL.cardTab==='opp') return s+opponentView(p,g);
+  if(PL.cardTab==='target') return s+targetView(p);
   if(!pl) return s+(q1Log(p)?`<div class="pl-card"><p class="pl-h">Last ${p.recent.length} first quarters vs ${p.line}</p>${hitChart(q1Log(p),p.line)}${q1Note(p)}</div>`:'')+`<div class="pl-card pl-sub">Full player detail (charts, trends) isn't in this data yet. Only screener fields were captured for this prop. The ${E(p.opp)} defense tab shows what's known about the opponent.</div>`;
   const lg=(pl.log||{})[p.market]||q1Log(p);
   if(lg) s+=`<div class="pl-card"><p class="pl-h">Last ${lg.length} ${isQ1(p)?'first quarters':'games'} vs ${p.line}</p>${hitChart(lg,p.line)}${isQ1(p)?q1Note(p):''}</div>`;
@@ -2443,6 +2512,72 @@ function playerCard(){
 }
 
 const NFL_NAMES={ARI:'Arizona Cardinals',ATL:'Atlanta Falcons',BAL:'Baltimore Ravens',BUF:'Buffalo Bills',CAR:'Carolina Panthers',CHI:'Chicago Bears',CIN:'Cincinnati Bengals',CLE:'Cleveland Browns',DAL:'Dallas Cowboys',DEN:'Denver Broncos',DET:'Detroit Lions',GB:'Green Bay Packers',HOU:'Houston Texans',IND:'Indianapolis Colts',JAC:'Jacksonville Jaguars',JAX:'Jacksonville Jaguars',KC:'Kansas City Chiefs',LA:'Los Angeles Rams',LAR:'Los Angeles Rams',LAC:'Los Angeles Chargers',LV:'Las Vegas Raiders',MIA:'Miami Dolphins',MIN:'Minnesota Vikings',NE:'New England Patriots',NO:'New Orleans Saints',NYG:'New York Giants',NYJ:'New York Jets',PHI:'Philadelphia Eagles',PIT:'Pittsburgh Steelers',SEA:'Seattle Seahawks',SF:'San Francisco 49ers',TB:'Tampa Bay Buccaneers',TEN:'Tennessee Titans',WAS:'Washington Commanders'};
+/* ===== props-target v1 (board_upgrades.py): Target tab - same type of player vs this defense, against THIS line ===== */
+function targetView(p){
+  const nba=PL.sport==='nba', o=p.opp, L=+p.line, under=p.side==='U', M=p.market, pos=p.pos;
+  const T=(PL.data.teams||{})[o]||{}, log=T.vsPosLog||{};
+  const verb=under?'under':'over', beat=r=> under ? (+r.result < L) : (+r.result > L);
+  const ty=typeOf(p.player,pos,M);
+  const grp=(t,ps)=> t ? TYPE_LBL(t) : (ps==='*' ? 'All players' : `${ps}s`);
+  const rowsAt=(team,ps)=>{ const lg=((PL.data.teams||{})[team]||{}).vsPosLog||{};
+    return ps==='*' ? Object.values(lg).flatMap(m=>m[M]||[]) : ((lg[ps]||{})[M]||[]); };
+  const tOf=(r,ps)=> typeOf(r.player, ps==='*'?null:ps, M);
+  const cur=(()=>{ const all=Object.values(log).flatMap(m=>m[M]||[]); return all.length?Math.max(...all.map(r=>r.season)):0; })();
+  const med=a=>{ if(!a.length) return null; const x=a.slice().sort((u,v)=>u-v), m=x.length>>1; return x.length%2?x[m]:(x[m-1]+x[m])/2; };
+  function tally(rows){ const c=rows.filter(r=>r.season===cur);
+    return {n:c.length, h:c.filter(beat).length, N:rows.length, H:rows.filter(beat).length, med:med(c.map(r=>(+r.result||0)-L))}; }
+  function league(ps, want){ let n=0,h=0; Object.keys(PL.data.teams||{}).forEach(tm=>{ if(tm===o) return;
+      rowsAt(tm,ps).forEach(r=>{ if(r.season!==cur) return; if(want!==undefined && tOf(r,ps)!==want) return; n++; if(beat(r)) h++; }); });
+    return n>=8 ? {n,h,r:h/n} : null; }
+  const pct=(h,n)=> n? Math.round(100*h/n)+'%' : '–';
+  const cls=(r,b)=> r==null||b==null ? '' : r-b>=.15 ? 'good' : r-b<=-.15 ? 'bad' : '';
+  const scopes = nba ? [pos,'*'] : [pos];
+  // headline: his group at his position (NBA: falls back to all positions when his position has < 3 rows)
+  let scope=pos, mine=rowsAt(o,pos).filter(r=> !ty || tOf(r,pos)===ty);
+  if(nba && ty && mine.filter(r=>r.season===cur).length<3){ const alt=rowsAt(o,'*').filter(r=>tOf(r,'*')===ty); if(alt.length>mine.length){ scope='*'; mine=alt; } }
+  const st=tally(mine), lg=league(scope, ty||undefined), rate=st.n?st.h/st.n:null;
+  const who = grp(ty, scope) + (nba && ty ? (scope==='*' ? ' (any position)' : ` at ${pos}`) : '');
+  const tgtTxt = `${verb[0].toUpperCase()+verb.slice(1)} ${L} ${M}`;
+  let s=`<div class="pl-card"><p class="pl-h">Target · ${E(who)} vs ${E(o)} · ${E(tgtTxt)}</p>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div style="font-size:30px;font-weight:800;line-height:1" class="${cls(rate, lg&&lg.r)}">${st.n?`${st.h}/${st.n}`:'–'}</div>
+      <div class="pl-sub" style="flex:1;min-width:180px">${st.n
+        ? `${E(who)} went <b style="color:var(--text)">${verb} ${L}</b> ${E(M.toLowerCase())} in ${st.h} of ${st.n} games against ${E(o)} this season${st.N>st.n?` · ${st.H}/${st.N} counting ${SL(String(cur-1))}`:''}.`
+        : `No ${E(who.toLowerCase())} with a ${E(M)} line against ${E(o)} in the data yet.`}</div></div>
+    <div class="pl-cells" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:10px">
+      <div class="pl-cell">vs ${E(o)}<b class="${cls(rate, lg&&lg.r)}">${pct(st.h,st.n)}</b></div>
+      <div class="pl-cell">vs everyone else<b>${lg?pct(lg.h,lg.n):'–'}</b></div>
+      <div class="pl-cell">Median vs ${L}<b class="${st.med>0?'good':st.med<0?'bad':''}">${st.med==null?'–':(st.med>0?'+':'')+(+st.med).toFixed(1)}</b></div></div>
+    ${!ty ? `<div class="pl-note">${E(p.player)} has no ${nba?'archetype':'type'} in the data${nba?' yet (comes from the props.cash scrape)':pos==='WR'||pos==='RB'?'':` (types exist for WRs and RBs)`} - showing every ${E(pos)} instead.</div>` : ''}</div>`;
+  // breakdown: every type at this position (NBA: also all positions), all against THIS line
+  scopes.forEach(ps=>{
+    const rows=rowsAt(o,ps); if(!rows.length) return;
+    const by={}; rows.forEach(r=>{ const k=tOf(r,ps)||'~'; (by[k]=by[k]||[]).push(r); });
+    const keys=Object.keys(by).sort((a,b)=> a==='~'?1:b==='~'?-1:by[b].length-by[a].length);
+    const all=tally(rows), lgAll=league(ps);
+    s+=`<div class="pl-card"><p class="pl-h">${E(o)} vs ${ps==='*'?'every position':E(ps)+'s'} · ${E(verb)} ${L} ${E(M)}</p><div class="pl-scroll"><table class="pl-tbl">
+      <tr><th>${nba?'Archetype':'Type'}</th><th>${E(SL(String(cur)))}</th><th>Rate</th><th>Others</th><th>Median</th><th>${nba?'Incl. last season':'Both seasons'}</th></tr>
+      ${keys.map(k=>{ const t=tally(by[k]), b=k==='~'?null:league(ps,k), r=t.n?t.h/t.n:null, me=k!=='~'&&k===ty;
+        return `<tr${me?' style="background:rgba(79,124,255,.12)"':''}><td>${k==='~'?'<span class="mut">No type</span>':E(TYPE_LBL(k))}${me?' ◀':''}</td>
+          <td>${t.n?`${t.h}/${t.n}`:'–'}</td><td class="${cls(r,b&&b.r)}">${pct(t.h,t.n)}</td><td class="mut">${b?pct(b.h,b.n):'–'}</td>
+          <td class="${t.med>0?'good':t.med<0?'bad':''}">${t.med==null?'–':(t.med>0?'+':'')+(+t.med).toFixed(1)}</td><td class="mut">${t.H}/${t.N}</td></tr>`; }).join('')}
+      <tr style="border-top:2px solid var(--border)"><td><b>All ${ps==='*'?'players':E(ps)+'s'}</b></td><td>${all.n?`${all.h}/${all.n}`:'–'}</td>
+        <td class="${cls(all.n?all.h/all.n:null, lgAll&&lgAll.r)}">${pct(all.h,all.n)}</td><td class="mut">${lgAll?pct(lgAll.h,lgAll.n):'–'}</td>
+        <td>${all.med==null?'–':(all.med>0?'+':'')+(+all.med).toFixed(1)}</td><td class="mut">${all.H}/${all.N}</td></tr>
+      </table></div></div>`;
+  });
+  // the games behind the headline number
+  const list=mine.slice().sort((a,b)=> (b.season-a.season) || String(b.date).localeCompare(String(a.date), undefined, {numeric:true})).slice(0,25);
+  if(list.length) s+=`<div class="pl-card"><p class="pl-h">${E(who)} vs ${E(o)} · each game against ${L}</p><div class="pl-scroll"><table class="pl-tbl">
+    <tr><th>Player</th><th>Date</th><th>Result</th><th>vs ${L}</th><th>His line</th></tr>
+    ${list.map(r=>{ const ok=beat(r), d=(+r.result||0)-L;
+      return `<tr><td>${E(r.player)}${r.opp?` <span class="mut">${E(r.opp)}</span>`:''}</td><td class="mut">${E(r.date||'')}${r.season!==cur?` <span style="font-size:10px">${E(SL(String(r.season)))}</span>`:''}</td>
+        <td><b>${E(r.result)}</b></td><td class="${ok?'good':'bad'}">${ok?'✓':'✗'} ${(d>0?'+':'')+(+d).toFixed(1)}</td>
+        <td class="mut">${r.line==null?'–':E(r.line)}</td></tr>`; }).join('')}</table></div></div>`;
+  s+=`<div class="pl-note" style="margin:-4px 2px 14px">Target counts every ${nba?'player of the same archetype':'player of the same type'} who had a ${E(M)} line against ${E(o)}, and checks his result against <b>this</b> line (${L}), not his own. "Others" = the same group against every other defense on the board${nba?'':' this season'}. ${nba?'NBA rows come from each defense\'s last 20 games, so early in the season some are from last season (right-hand column). Archetypes come from Synergy play-type mix.':'WR types from Razzball slot share, RB roles from carries/targets per game and run lanes; TEs and QBs have no type, so the whole position is used.'} Small samples (under 5 games) are a hint, not a fact.</div>`;
+  return s;
+}
+
 function opponentView(p,g){
   const o=p.opp, t=PL.data.teams[o]||{}, mine=PL.data.teams[p.team]||{}, isHome=g&&g.home===o;
   let s=`<div class="pl-card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -2585,6 +2720,284 @@ const LK_CACHE={m:{},set:null};
 window.PropsLab = { render, onSport:s=>{ if(s==='nfl'||s==='nba') applySport(s); else PL.sport=s; render(); }, _state:PL, lookup:lookupProp };
 document.addEventListener('DOMContentLoaded', ()=>{ PL.sets.nfl = expandRows(window.EMBEDDED_PROPS || null); PL.sets.nba = expandRows(window.EMBEDDED_NBA_PROPS || null);
   applySport('nfl'); addDataCard(); render(); });
+})();
+</script>
+
+<script>
+/* ===== board-upgrades v1: sport dropdown + Top Bets (board_upgrades.py) ===== */
+(function(){
+"use strict";
+const SPORT_LABEL = {cfb:'NCAAF', ncaab:'NCAAB', nfl:'NFL', nba:'NBA', nhl:'NHL'};
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- sport dropdown (filled from the hidden tab row) ---------- */
+function buildSportSelect(){
+  const sel = document.getElementById('sportSelect'); if(!sel) return;
+  const tabs = Array.from(document.querySelectorAll('.sporttabs .sporttab'));
+  sel.innerHTML = '';
+  const sports = document.createElement('optgroup'); sports.label = 'Sports';
+  const pages = document.createElement('optgroup'); pages.label = 'Other pages';
+  tabs.forEach(t=>{
+    const o = document.createElement('option');
+    o.textContent = t.textContent.trim();
+    if(t.dataset.sport){ o.value = 's:'+t.dataset.sport; sports.appendChild(o); }
+    else if(t.getAttribute('href')){ o.value = 'u:'+t.getAttribute('href'); o.textContent += ' ↗'; pages.appendChild(o); }
+  });
+  sel.appendChild(sports); if(pages.children.length) sel.appendChild(pages);
+  const sync = ()=>{ const a = document.querySelector('.sporttabs .sporttab.active[data-sport]'); if(a) sel.value = 's:'+a.dataset.sport; };
+  sync();
+  sel.onchange = ()=>{
+    const v = sel.value;
+    if(v.startsWith('u:')){ const href = v.slice(2); sync(); window.location.href = href; return; }
+    const t = document.querySelector('.sporttabs .sporttab[data-sport="'+v.slice(2)+'"]');
+    if(t) t.click();
+  };
+  new MutationObserver(sync).observe(document.querySelector('.sporttabs'), {attributes:true, subtree:true, attributeFilter:['class']});
+}
+
+/* ---------- Top Bets ---------- */
+const TB = {sport:'all', limit:25};
+const GRADE_PTS = {'A+':3.5,'A':3,'A-':2.6,'B+':2.2,'B':1.8,'B-':1.4,'C+':0.6,'C':0.3,'C-':0,'D+':-0.8,'D':-1,'D-':-1.3,'F':-2};
+const SIG = [['SharpAction','Sharp Action',1.5],['BigMoney','Big Money',1.0],['PROSystems','PRO Systems',1.0],
+             ['ModelProj','Model Proj',1.0],['TopExperts','Top Experts',0.75]];
+const num = v => { const x = parseFloat(String(v==null?'':v).replace(/[^0-9.+-]/g,'')); return isFinite(x) ? x : null; };
+const clamp = (x,a,b)=> Math.max(a, Math.min(b, x));
+
+function windowEnd(now){ const e = new Date(now); e.setDate(e.getDate()+1); e.setHours(4,0,0,0); return e; }   // "rest of today" = until 4 AM
+
+function expertWeight(sport, t, favs){
+  let w = 1;
+  const u = String(t.record||'').match(/\(([+-]?\d+(?:\.\d+)?)u\)/);
+  if(u) w += clamp(parseFloat(u[1])/10, -0.5, 1.0);            // last-30-day units won/lost
+  const units = num(t.units);
+  if(units!==null && units>=2) w += 0.25;                        // bigger stake than usual
+  if(favs.has(t.analyst)) w += 0.25;
+  if(t.source==='SU') w *= 0.5;                                  // straight-up picks: weaker signal
+  return Math.max(0.25, w);
+}
+
+// Turn a pick's text into {market, side, line}. side: 1/2 (team1/team2) or 'over'/'under'.
+function parsePick(B, sport, g, text){
+  const s = String(text||'').trim(); if(!s) return null;
+  if(/\b(1H|2H|1Q|2Q|3Q|4Q|1P|2P|3P|Q[1-4]|1st|2nd|First|Half|Period|Live|Inning|F5|Alt|Parlay|Teaser)\b/i.test(s)) return null;
+  let m = s.match(/^(Over|Under)\s*(\d+(?:\.\d+)?)/i);
+  if(m) return {market:'total', side:m[1].toLowerCase(), line:parseFloat(m[2])};
+  const names = side => [g['team'+side+'Abbrev'], g['team'+side]].filter(Boolean);
+  let side = 0, rest = '';
+  for(const sd of [1,2]){
+    for(const nm of names(sd)){
+      const N = String(nm).toUpperCase();
+      if(s.toUpperCase().startsWith(N) && /^(\s|$)/.test(s.slice(N.length))){ side = sd; rest = s.slice(N.length); break; }
+    }
+    if(side) break;
+  }
+  if(!side){
+    // free-text team ("Indiana -26.5 vs Western Kentucky", "Ohio State ML"): resolve the leading name
+    const lead = s.split(/\s+(?:vs\.?|@)\s+/i)[0].replace(/\s*\(\s*[+-]?\d+\s*\)\s*$/,'');
+    const nm = lead.replace(/\s+(ML|PK|PICK|EVEN|EV)\b.*$/i,'').replace(/\s*[+-]\d.*$/,'').trim();
+    if(!nm) return null;
+    const k = B.canonKey(sport, nm);
+    if(k && k===B.canonKey(sport, g.team1)) side = 1; else if(k && k===B.canonKey(sport, g.team2)) side = 2;
+    if(!side) return null;
+    rest = lead.slice(nm.length);
+    if(/\s(o|u)\d/i.test(' '+rest.trim())) return null;              // team total
+  }
+  rest = rest.trim();
+  if(/^[ou]\d/i.test(rest)) return null;                             // team total "ATL o110.5"
+  if(/^(PK|PICK|EVEN|EV)\b/i.test(rest)) return {market:'spread', side, line:0};
+  if((m = rest.match(/^([+-]\d{1,2}(?:\.\d)?)(?!\d)/))) return {market:'spread', side, line:parseFloat(m[1])};
+  if(/^([+-]\d{3,4})\b/.test(rest) || /^ML\b/i.test(rest) || rest==='') return {market:'ml', side, line:null};
+  return null;
+}
+
+function proSide(B, sport, g, row){
+  // which game side (1/2) a PRO row's Team1 is
+  if(!row) return 1;
+  const k1 = B.canonKey(sport, row.Team1);
+  if(k1 && k1===B.canonKey(sport, g.team2)) return 2;
+  return 1;
+}
+
+function sideSignals(B, sport, g, side){
+  // model / market signals for one team side -> {pts, why[]}
+  const out = {pts:0, why:[]};
+  const p = g.pro.projections, sh = g.pro.sharp, pub = g.pro.public;
+  const idx = row => (proSide(B, sport, g, row)===side ? '1' : '2');
+  if(p){
+    const gr = String(p['Grade'+idx(p)]||'').trim();
+    if(gr in GRADE_PTS){
+      let v = GRADE_PTS[gr];
+      if(sport==='nba' && Date.now() < (B.NBA_MODEL_TRUST_FROM||0)) v *= 0.5;
+      out.pts += v;
+      if(v>=1.4) out.why.push(['g','Action grade '+gr]);
+      else if(v<0) out.why.push(['r','Action grade '+gr]);
+    }
+    const e = num(p['Edge'+idx(p)]);
+    if(e!==null && e>0){ out.pts += Math.min(2, e*0.25); out.why.push(['g','Edge '+(e>0?'+':'')+e+'%']); }
+  }
+  if(sh){
+    const i = idx(sh);
+    SIG.forEach(([f,lbl,w])=>{ if(sh[f+i]==='Y'){ out.pts += w; out.why.push(['g',lbl]); } });
+  }
+  if(pub){
+    const i = idx(pub), b = num(pub['BetPct'+i]), m = num(pub['MoneyPct'+i]);
+    if(b!==null && m!==null && m-b>=10){
+      out.pts += (m-b>=20) ? 1.0 : 0.6;
+      out.why.push(['g', `Money ${m}% vs bets ${b}%`]);
+    }
+  }
+  return out;
+}
+
+function betLabel(B, sport, g, cand){
+  // no expert pick text: build the bet from the board's odds / consensus lines
+  const team = cand.side===1 ? g.team1 : g.team2;
+  const od = g.pro.odds, p = g.pro.projections;
+  if(cand.market==='ml'){
+    const c = p ? p['Consensus'+(proSide(B,sport,g,p)===cand.side?'1':'2')] : null;
+    return `${team} ML${c?' '+c:''}`;
+  }
+  if(od){
+    const i = proSide(B,sport,g,od)===cand.side ? '1' : '2', l = od['BestLine'+i], j = od['BestJuice'+i];
+    const x = parseFloat(od.BestLine1), y = parseFloat(od.BestLine2);
+    if(l && isFinite(x) && isFinite(y) && ((x>0)!==(y>0) || (x===0&&y===0))) return `${team} ${l}${j?' ('+j+')':''}`;
+  }
+  if(p){ const c = p['Consensus'+(proSide(B,sport,g,p)===cand.side?'1':'2')]; if(c) return `${team} ${c}`; }
+  return `${team} spread`;
+}
+
+function candidatesForGame(B, sport, g, favs){
+  const cands = {};
+  const get = (market, side) => cands[market+'|'+side] || (cands[market+'|'+side] = {market, side, experts:new Map(), texts:{}, pts:0, why:[]});
+  // expert picks
+  B.gameTakers(g).forEach(grp=>{
+    const pp = parsePick(B, sport, g, grp.pick); if(!pp) return;
+    const c = get(pp.market, pp.side);
+    grp.takers.forEach(t=>{
+      const name = (t.analyst||'').trim() || ('?'+Math.random());
+      const w = expertWeight(sport, t, favs);
+      if(!c.experts.has(name) || c.experts.get(name).w < w) c.experts.set(name, {w, t});
+    });
+    c.texts[grp.pick] = (c.texts[grp.pick]||0) + grp.takers.length;
+  });
+  // model / market signals live on each team's main market (NHL: moneyline, else spread)
+  const main = sport==='nhl' ? 'ml' : 'spread';
+  const sig = {1:sideSignals(B,sport,g,1), 2:sideSignals(B,sport,g,2)};
+  [1,2].forEach(sd=>{ if(sig[sd].pts>0 && !cands['ml|'+sd] && !cands['spread|'+sd]) get(main, sd); });
+  const opp = c => c.market==='total' ? (c.side==='over'?'under':'over') : (c.side===1?2:1);
+  const out = [];
+  Object.values(cands).forEach(c=>{
+    const ex = [...c.experts.values()].reduce((n,e)=>n+e.w, 0);
+    const other = cands[c.market+'|'+opp(c)];
+    const exOther = other ? [...other.experts.values()].reduce((n,e)=>n+e.w, 0) : 0;
+    let pts = ex - 0.6*exOther;
+    const why = [];
+    if(c.experts.size){
+      const hot = [...c.experts.values()].filter(e=>/\(\+\d/.test(String(e.t.record||''))).length;
+      why.push(['g', `${c.experts.size} expert${c.experts.size>1?'s':''}` + (hot?` (${hot} up last 30d)`:'')]);
+    }
+    if(other && other.experts.size) why.push(['r', `${other.experts.size} on the other side`]);
+    if(c.market!=='total'){
+      const s = sig[c.side], so = sig[opp(c)];
+      const f = (c.market===main || !cands[main+'|'+c.side]) ? 1 : 0.5;
+      pts += f*s.pts - 0.5*f*Math.max(0, so.pts);
+      why.push(...s.why);
+      so.why.filter(w=>w[0]==='g' && /Sharp Action|Big Money/.test(w[1])).forEach(w=>why.push(['r', w[1]+' on other side']));
+    }
+    if(pts<=0) return;
+    const texts = Object.entries(c.texts).sort((a,b)=>b[1]-a[1]);
+    const bet = texts.length ? texts[0][0] : betLabel(B, sport, g, c);
+    out.push({sport, g, market:c.market, side:c.side, pts, why, bet, fromPick: !!texts.length,
+              nExperts:c.experts.size, nOther: other ? other.experts.size : 0});
+  });
+  return out;
+}
+
+function topBets(){
+  const B = window.__BOARD; if(!B) return [];
+  const now = new Date(), end = windowEnd(now);
+  const all = [];
+  Object.keys(B.GAMES).forEach(sport=>{
+    const favs = new Set((B.FAVORITE_EXPERTS||{})[sport] || []);
+    (B.GAMES[sport]||[]).forEach(g=>{
+      if(!g.timeIsReal || !g.date || !g.team1 || !g.team2) return;
+      if(B.gameStarted(g) || g.date > end) return;
+      candidatesForGame(B, sport, g, favs).forEach(c=>all.push(c));
+    });
+  });
+  all.sort((a,b)=>b.pts-a.pts);
+  return all;
+}
+
+function tier(p){ return p>=7 ? ['t1','Strong'] : p>=4.5 ? ['t2','Good'] : ['t3','Lean']; }
+
+function render(){
+  const root = document.getElementById('topView'); if(!root) return;
+  const B = window.__BOARD;
+  const list = topBets();
+  const sportsWith = [...new Set(list.map(c=>c.sport))];
+  if(TB.sport!=='all' && !sportsWith.includes(TB.sport)) TB.sport = 'all';
+  const shown = list.filter(c=>TB.sport==='all' || c.sport===TB.sport).filter(c=>c.pts>=2).slice(0, TB.limit);
+  const now = new Date();
+  const chips = [['all','All sports']].concat(sportsWith.map(s=>[s, SPORT_LABEL[s]||s.toUpperCase()]));
+  let html = `<div class="tb-head"><h2>Top Bets — rest of today</h2>
+    <span class="sub">${now.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'})} · games not yet started</span></div>
+    <div class="pl-chiprow" id="tbChips">${chips.map(([v,l])=>`<span class="pl-chipb ${TB.sport===v?'on':''}" data-v="${v}">${esc(l)}</span>`).join('')}</div>`;
+  if(!shown.length){
+    html += `<div class="empty">No upcoming games today have enough agreement to rank.<br>Check back after the next scrape, or tick “Show started” on the Board for live games.</div>`;
+  }
+  const top = shown.length ? shown[0].pts : 1;
+  shown.forEach((c,i)=>{
+    const g = c.g, [tc, tl] = tier(c.pts);
+    const t = g.date.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+    const key = c.fromPick ? B.playKey(c.sport, g.team1, g.team2, c.bet) : null;
+    const starred = key && B.S[c.sport] && B.S[c.sport].myPlays.has(key);
+    html += `<div class="tb-card" data-i="${i}">
+      <div class="tb-rank">${i+1}</div>
+      <div>
+        <div class="tb-meta"><span class="tb-sport">${esc(SPORT_LABEL[c.sport]||c.sport)}</span>${esc(t)}${g.network?' · '+esc(g.network):''}</div>
+        <div class="tb-bet">${esc(c.bet)}</div>
+        <div class="tb-game">${esc(g.team2)} @ ${esc(g.team1)}</div>
+        <div class="tb-why">${c.why.slice(0,6).map(([k,w])=>`<span class="${k}">${esc(w)}</span>`).join('')}</div>
+      </div>
+      <div class="tb-right">
+        <span class="tb-tier ${tc}">${tl}</span>
+        <div class="tb-bar" title="Score ${c.pts.toFixed(1)}"><i style="width:${Math.round(100*Math.min(1,c.pts/Math.max(top,7)))}%"></i></div>
+        <span class="tb-score">${c.pts.toFixed(1)}</span>
+        ${key ? `<span class="tb-star ${starred?'on':''}" data-i="${i}" title="Add to My Plays">${starred?'★':'☆'}</span>` : ''}
+      </div></div>`;
+  });
+  html += `<details class="tb-how"><summary>How bets are ranked</summary>
+    <p>Every side (spread, moneyline or total) of each game that hasn't started yet and kicks off before 4 AM is scored from what's on the board:</p>
+    <ul>
+      <li><b>Experts</b>: each analyst on the side counts 1, more if they're up units over the last 30 days (up to +1), +0.25 for a bigger-than-usual stake or a favorite expert. Straight-up picks count half. Experts on the other side subtract 60% of their weight.</li>
+      <li><b>Action PRO grade</b> for that team (A = +3 down to F = −2; NBA counts half until Nov 15) and model edge.</li>
+      <li><b>Sharp signals</b>: Sharp Action +1.5, Big Money / PRO Systems / Model Proj +1, Top Experts +0.75.</li>
+      <li><b>Money vs bets</b>: money % at least 10 points above bet % adds 0.6 (20+ points adds 1).</li>
+      <li>Signals on the other team subtract half. Signals count fully on each team's main market (NHL moneyline, otherwise the spread) and half on the other one.</li>
+    </ul>
+    <p>Strong = 7+, Good = 4.5+, Lean = 2+. These are rankings of agreement between sources, not guarantees.</p></details>`;
+  root.innerHTML = html;
+  root.querySelectorAll('#tbChips .pl-chipb').forEach(el=> el.onclick = ()=>{ TB.sport = el.dataset.v; render(); });
+  root.querySelectorAll('.tb-star').forEach(el=> el.onclick = ev=>{
+    ev.stopPropagation();
+    const c = shown[+el.dataset.i], k = B.playKey(c.sport, c.g.team1, c.g.team2, c.bet), set = B.S[c.sport].myPlays;
+    if(set.has(k)) set.delete(k); else set.add(k);
+    B.savePlays(c.sport); render();
+  });
+  root.querySelectorAll('.tb-card').forEach(el=> el.onclick = ()=>{
+    const c = shown[+el.dataset.i];
+    B.switchSport(c.sport);
+    B.S[c.sport].filters.search = c.g.team1 || '';
+    const sb = document.getElementById('searchBox'); if(sb) sb.value = B.S[c.sport].filters.search;
+    B.switchView('board');
+    B.renderBoard();
+    window.scrollTo(0,0);
+  });
+}
+
+window.TopBets = { render, list: topBets };
+document.addEventListener('DOMContentLoaded', ()=>{ buildSportSelect(); });
 })();
 </script>
 
