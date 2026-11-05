@@ -2578,6 +2578,78 @@ function targetView(p){
   return s;
 }
 
+/* ===== props-targets-list v1 (board_upgrades.py): Targets view - every prop ranked by how often players like him beat this line vs this defense ===== */
+PL.tg = PL.tg || {min:3, sort:'rate', group:'', pos:'', search:'', side:'over'};
+function tgPool(ps, M){
+  // every row for this market (and position, or all positions for '*') across every defense, typed once
+  const D=PL.data; D._tgPool=D._tgPool||{}; const key=ps+'|'+M; if(D._tgPool[key]) return D._tgPool[key];
+  const out=[], cur={v:0};
+  Object.entries(D.teams||{}).forEach(([tm,t])=>{ const lg=t.vsPosLog||{};
+    const rows= ps==='*' ? Object.values(lg).flatMap(m=>m[M]||[]) : ((lg[ps]||{})[M]||[]);
+    rows.forEach(r=>{ out.push({tm, r, ty:typeOf(r.player, ps==='*'?null:ps, M)}); if(r.season>cur.v) cur.v=r.season; }); });
+  out.cur=cur.v; return D._tgPool[key]=out;
+}
+function targetStats(p){
+  const D=PL.data; D._tgc=D._tgc||new Map(); if(D._tgc.has(p)) return D._tgc.get(p);
+  const nba=PL.sport==='nba', o=p.opp, L=+p.line, under=p.side==='U', M=p.market, pos=p.pos;
+  const ty=typeOf(p.player,pos,M);
+  const beat=r=> under ? (+r.result < L) : (+r.result > L);
+  const pick=(ps)=>{ const pool=tgPool(ps,M), cur=pool.cur;
+    const mine=pool.filter(x=>x.tm===o && x.r.season===cur && (!ty || x.ty===ty)).map(x=>x.r);
+    const oth=pool.filter(x=>x.tm!==o && x.r.season===cur && (!ty || x.ty===ty)).map(x=>x.r);
+    return {mine, oth}; };
+  let scope=pos, m=pick(pos);
+  if(nba && ty && m.mine.length<3){ const a=pick('*'); if(a.mine.length>m.mine.length){ scope='*'; m=a; } }
+  const n=m.mine.length, h=m.mine.filter(beat).length;
+  const margins=m.mine.map(r=>(+r.result||0)-L), sgnM=under?-1:1;
+  const avg=n? sgnM*margins.reduce((a,b)=>a+b,0)/n : null;
+  const sorted=margins.map(x=>sgnM*x).sort((a,b)=>a-b), med=n?(n%2?sorted[n>>1]:(sorted[n/2-1]+sorted[n/2])/2):null;
+  const on=m.oth.length, oh=m.oth.filter(beat).length;
+  const out={ty, scope, n, h, rate:n?h/n:null, avg, med, on, oh, orate:on>=8?oh/on:null,
+    who:(ty?TYPE_LBL(ty):`${pos}s`)+(nba&&ty&&scope==='*'?' (any pos)':'')};
+  D._tgc.set(p,out); return out;
+}
+function targetsList(){
+  const T=PL.tg, P=(PL.data.props||[]);
+  const q=(T.search||'').toLowerCase();
+  let rows=P.filter(p=> !started(p) && inGroup(p,T.group) && (!T.pos||p.pos===T.pos) && (p.side||'O')===(T.side==='under'?'U':'O')
+      && (!q || (p.player+' '+p.team+' '+p.opp).toLowerCase().includes(q)))
+    .map(p=>({p, t:targetStats(p)})).filter(x=>x.t.n>=T.min);
+  const lift=x=> x.t.orate==null ? 0 : x.t.rate-x.t.orate;
+  const cmp={rate:(a,b)=> b.t.rate-a.t.rate || b.t.n-a.t.n || b.t.avg-a.t.avg,
+             margin:(a,b)=> b.t.avg-a.t.avg || b.t.rate-a.t.rate,
+             lift:(a,b)=> lift(b)-lift(a) || b.t.rate-a.t.rate,
+             games:(a,b)=> b.t.n-a.t.n || b.t.rate-a.t.rate}[T.sort]||((a,b)=>0);
+  rows.sort(cmp);
+  const shown=rows.slice(0, PL.limit);
+  const hasUnder=P.some(p=>p.side==='U');
+  const fmtM=v=> v==null?'–':(v>0?'+':'')+(Math.abs(v)>=10?v.toFixed(0):v.toFixed(1));
+  let s=`<div class="pl-filters">
+    ${GROUP_LBL.length?`<div class="pl-chiprow" data-tgchip="group">${GROUP_LBL.map(([v,l])=>`<span class="pl-chipb ${T.group===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>`:''}
+    <div class="pl-chiprow" data-tgchip="pos">${[['','All pos']].concat(POSITIONS.map(x=>[x,x])).map(([v,l])=>`<span class="pl-chipb ${T.pos===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
+    <div class="pl-chiprow" data-tgchip="min">${[[1,'1+ games'],[3,'3+ games'],[5,'5+ games'],[8,'8+ games']].map(([v,l])=>`<span class="pl-chipb ${T.min===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
+    <div class="pl-bar" style="margin:6px 0 0">
+      <input id="tgSearch" placeholder="Search player or team" value="${E(T.search)}">
+      <select id="tgSort">${[['rate','Hit rate'],['margin','Avg margin'],['lift','Hit rate vs others'],['games','Most games']].map(([v,l])=>`<option value="${v}" ${T.sort===v?'selected':''}>Sort: ${l}</option>`).join('')}</select>
+      ${hasUnder?`<select id="tgSide"><option value="over" ${T.side!=='under'?'selected':''}>Overs</option><option value="under" ${T.side==='under'?'selected':''}>Unders</option></select>`:''}
+    </div></div>
+  <div class="pl-sub" style="margin:8px 2px">${rows.length} props · games not started · ranked by how often ${PL.sport==='nba'?'the same archetype':'the same type of player'} beat <b style="color:var(--text)">this line</b> against this defense this season.</div>`;
+  if(!shown.length) s+=`<div class="pl-card pl-sub">No props match. Try fewer games (1+) or clear a filter.</div>`;
+  s+=`<div class="pl-card" style="padding:4px 8px">${shown.map((x,i)=>{ const p=x.t, pr=x.p, idx=P.indexOf(pr), r=p.rate, l=lift(x);
+      const col=r>=.75?'var(--accent2)':r>=.6?'#8fb0ff':r>=.4?'var(--sub)':'var(--bad)';
+      return `<div class="pl-row2" data-tprop="${idx}" style="grid-template-columns:26px minmax(0,1fr) auto">
+        <div class="tb-rank" style="font-size:13px">${i+1}</div>
+        <div style="min-width:0"><div class="pl-name">${E(pr.player)} <span class="pl-sub">${E(pr.team)} ${E(pr.pos)} vs ${E(pr.opp)}</span></div>
+          <div class="pl-sub">${pr.side==='U'?'U':'O'} ${pr.line} ${E(pr.market)} · <b class="pl-odds-s">${fmtOdds(pr.odds)}</b></div>
+          <div class="pl-sub" style="margin-top:3px"><span style="color:var(--text)">${E(p.who)}</span> vs ${E(pr.opp)}: ${p.h} of ${p.n} ${pr.side==='U'?'under':'over'} · avg <b class="${p.avg>0?'good':p.avg<0?'bad':''}">${fmtM(p.avg)}</b>${p.orate!=null?` · others ${Math.round(p.orate*100)}%`:''}</div>
+          <div class="pl-mini"><div class="pl-ptrack"><div class="pl-pfill ${r>=.5?'up':'dn'}" style="left:0;width:${Math.round(r*100)}%"></div>${p.orate!=null?`<div class="pl-ptick" style="left:${p.orate*100}%" title="vs everyone else"></div>`:''}</div></div></div>
+        <div class="pl-rt"><b style="font-size:17px;color:${col}">${p.h}/${p.n}</b><span class="pl-sub">${Math.round(r*100)}%</span>
+          ${p.orate!=null?`<span class="pl-sub ${l>=.15?'good':l<=-.15?'bad':''}" style="font-size:11px">${l>=0?'+':''}${Math.round(l*100)} vs others</span>`:''}</div></div>`; }).join('')}</div>
+  ${rows.length>shown.length?`<button class="btn" id="tgMore" style="width:100%;margin-bottom:10px">Show ${Math.min(100,rows.length-shown.length)} more</button>`:''}
+  <div class="pl-note" style="margin:0 2px 14px">For each prop: every ${PL.sport==='nba'?'player of the same archetype':'player of the same type'} (NFL WR slot/outside/hybrid, RB receiving/non-receiving or run style; TE/QB = whole position${PL.sport==='nba'?'; NBA falls back to any position when his position has under 3 games':''}) who had this market against this defense this season, checked against <b>this</b> line. Avg = average result minus the line. Others = same group vs every other defense; the tick on the bar marks it. Tap a row for the full Target breakdown.</div>`;
+  return s;
+}
+
 function opponentView(p,g){
   const o=p.opp, t=PL.data.teams[o]||{}, mine=PL.data.teams[p.team]||{}, isHome=g&&g.home===o;
   let s=`<div class="pl-card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -2620,8 +2692,8 @@ function render(){
   if(!PL.data){ root.innerHTML=`<div class="pl-card pl-sub">No props.cash ${PL.sport.toUpperCase()} data loaded yet. Load ${PL.sport==='nba'?'nba_props.json':'props.json'} from the Data tab${PL.sport==='nba'?' (NBA Tool: run_nba_pipeline.bat, props.cash options)':''}.</div>`; return; }
   const v=PL.view==='player'&&!PL.prop?'screener':PL.view;
   root.innerHTML = (PL.data.sample?`<div class="pl-banner">Sample data.</div>`:PL.data.note?`<div class="pl-banner">${E(PL.data.note)}</div>`:`<div class="pl-sub" style="margin-top:8px">props.cash · scraped ${E(PL.data.scraped_at||'')}</div>`)
-    + `<div class="pl-views">${[['screener','Best plays'],['game','By game'],['player','Player card']].map(([k,l])=>`<div class="pl-vbtn ${v===k?'on':''}" data-plview="${k}">${l}</div>`).join('')}</div>`
-    + (v==='screener'?screener():v==='game'?byGame():playerCard());
+    + `<div class="pl-views">${[['screener','Best plays'],['targets','Targets'],['game','By game'],['player','Player card']].map(([k,l])=>`<div class="pl-vbtn ${v===k?'on':''}" data-plview="${k}">${l}</div>`).join('')}</div>`
+    + (v==='screener'?screener():v==='targets'?targetsList():v==='game'?byGame():playerCard());
   wire(root);
 }
 function wire(root){
@@ -2644,6 +2716,12 @@ function wire(root){
     const k=row.dataset.chip; PL.f[k]=c.dataset.v; if(k==='group') PL.f.market=''; PL.limit=100; saveFilters(); render(); }));
   root.querySelectorAll('[data-player]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); PL.f.search=el.dataset.player; PL.f.onePer=false; PL.f.grade='all'; render(); window.scrollTo(0,0); });
   on('#plStarOnly','onclick',()=>{ PL.f.starred=!PL.f.starred; render(); });
+  root.querySelectorAll('[data-tprop]').forEach(r=>r.onclick=()=>{ PL.prop=PL.data.props[+r.dataset.tprop]; PL.cardTab='target'; PL.returnTo='targets'; PL.view='player'; PL.logOpen=false; render(); window.scrollTo(0,0); });
+  root.querySelectorAll('[data-tgchip]').forEach(row=>row.querySelectorAll('[data-v]').forEach(c=>c.onclick=()=>{ const k=row.dataset.tgchip; PL.tg[k]= k==='min' ? +c.dataset.v : c.dataset.v; PL.limit=100; render(); }));
+  on('#tgSort','onchange',e=>{ PL.tg.sort=e.target.value; render(); });
+  on('#tgSide','onchange',e=>{ PL.tg.side=e.target.value; render(); });
+  on('#tgMore','onclick',()=>{ PL.limit+=100; render(); });
+  on('#tgSearch','oninput',e=>{ PL.tg.search=e.target.value; const pos=e.target.selectionStart; render(); const s=q('#tgSearch'); if(s){ s.focus(); s.setSelectionRange(pos,pos); } });
   on('#plSearch','oninput',e=>{ PL.f.search=e.target.value; const pos=e.target.selectionStart; render(); const s=q('#plSearch'); s.focus(); s.setSelectionRange(pos,pos); });
 }
 function addDataCard(){
