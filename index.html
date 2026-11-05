@@ -2125,12 +2125,13 @@ const injKey = n=> String(n).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toL
 
 /* ---------- best plays board ---------- */
 let GROUPS = {
-  td:['Anytime TD','1Q Anytime TD','Pass TD'],
+  td:['Anytime TD','1Q Anytime TD'],
+  ptd:['Pass TD'],
   rush:['Rush Yards','Rush Attempts','Longest Rush','1Q Rush Yards','Rush + Rec Yards'],
   rec:['Receiving Yards','Receptions','Targets','Longest Reception','1Q Rec Yards','Rush + Rec Yards'],
-  pass:['Pass Yards','Pass Completions','Pass Attempts','Interceptions Thrown','Longest Pass','Pass + Rush Yards','1Q Pass Yards'],
+  pass:['Pass Yards','Pass TD','Pass Completions','Pass Attempts','Interceptions Thrown','Longest Pass','Pass + Rush Yards','1Q Pass Yards'],
   q1:['1Q Rec Yards','1Q Rush Yards','1Q Pass Yards','1Q Anytime TD']};
-let GROUP_LBL = [['','All'],['q1','1st Qtr'],['td','TDs'],['rush','Rushing'],['rec','Receiving'],['pass','Passing'],['other','Kick/Def']];
+let GROUP_LBL = [['','All'],['q1','1st Qtr'],['td','Anytime TD'],['ptd','Pass TDs'],['rush','Rushing'],['rec','Receiving'],['pass','Passing'],['other','Kick/Def']];
 const inGroup = (p,g)=> !g ? true : g==='other' ? !Object.values(GROUPS).some(a=>a.includes(p.market)) : (GROUPS[g]||[]).includes(p.market);
 const ODDS_LBL = [['','Any odds'],['fav','−150 or shorter'],['even','−149 to +149'],['plus','+150 to +600'],['long','+600 and up']];
 const inOdds = (o,k)=> !k?true : k==='fav'?o<=-150 : k==='even'?(o>-150&&o<150) : k==='plus'?(o>=150&&o<=600) : o>600;
@@ -2618,10 +2619,14 @@ function targetStats(p){
     who:(ty?TYPE_LBL(ty):`${pos}s`)+(nba&&ty&&scope==='*'?' (any pos)':'')};
   C.set(p,out); return out;
 }
+/* ===== props-targets-game v1 (board_upgrades.py): game dropdown on Targets ===== */
+function tgGames(){ const P=PL.data.props||[]; const live=new Set(P.filter(p=>!started(p)).map(p=>p.game));
+  return (PL.data.games||[]).filter(g=>live.has(g.id)).sort((a,b)=>String(a.time||'').localeCompare(String(b.time||''))); }
 function targetsList(){
   const T=PL.tg, P=(PL.data.props||[]);
+  if(T.game && !tgGames().some(g=>g.id===T.game)) T.game='';
   const q=(T.search||'').toLowerCase();
-  let rows=P.filter(p=> !started(p) && inGroup(p,T.group) && (!T.pos||p.pos===T.pos) && (p.side||'O')===(T.side==='under'?'U':'O')
+  let rows=P.filter(p=> !started(p) && inGroup(p,T.group) && (!T.pos||p.pos===T.pos) && (!T.game||p.game===T.game) && (p.side||'O')===(T.side==='under'?'U':'O')
       && (!q || (p.player+' '+p.team+' '+p.opp).toLowerCase().includes(q)))
     .map(p=>({p, t:targetStats(p)})).filter(x=>x.t.n>=T.min);
   const lift=x=> x.t.orate==null ? 0 : x.t.rate-x.t.orate;
@@ -2641,6 +2646,7 @@ function targetsList(){
     <div class="pl-chiprow" data-tgchip="grp">${[['type',PL.sport==='nba'?'Same archetype':'Same player type'],['pos','Same position']].map(([v,l])=>`<span class="pl-chipb ${T.grp===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
     <div class="pl-chiprow" data-tgchip="min">${[[1,'1+ games'],[3,'3+ games'],[5,'5+ games'],[8,'8+ games']].map(([v,l])=>`<span class="pl-chipb ${T.min===v?'on':''}" data-v="${v}">${E(l)}</span>`).join('')}</div>
     <div class="pl-bar" style="margin:6px 0 0">
+      <select id="tgGame" style="flex:1 1 100%"><option value="">All games</option>${tgGames().map(g=>`<option value="${g.id}" ${T.game===g.id?'selected':''}>${E(g.away)} @ ${E(g.home)} · ${E((g.kickoff||'').split(',')[0])}</option>`).join('')}</select>
       <input id="tgSearch" placeholder="Search player or team" value="${E(T.search)}">
       <select id="tgSort">${[['rate','Hit rate (best first)'],['low','Hit rate (worst first)'],['margin','Avg margin'],['lift','Hit rate vs others'],['games','Most games']].map(([v,l])=>`<option value="${v}" ${T.sort===v?'selected':''}>Sort: ${l}</option>`).join('')}</select>
       ${hasUnder?`<select id="tgSide"><option value="over" ${T.side!=='under'?'selected':''}>Overs</option><option value="under" ${T.side==='under'?'selected':''}>Unders</option></select>`:''}
@@ -2732,6 +2738,7 @@ function wire(root){
   root.querySelectorAll('[data-tgchip]').forEach(row=>row.querySelectorAll('[data-v]').forEach(c=>c.onclick=()=>{ const k=row.dataset.tgchip; PL.tg[k]= k==='min' ? +c.dataset.v : c.dataset.v; PL.limit=100; tgSave(); render(); }));
   on('#tgSort','onchange',e=>{ PL.tg.sort=e.target.value; tgSave(); render(); });
   on('#tgSide','onchange',e=>{ PL.tg.side=e.target.value; render(); });
+  on('#tgGame','onchange',e=>{ PL.tg.game=e.target.value; PL.limit=100; render(); });
   on('#tgMore','onclick',()=>{ PL.limit+=100; render(); });
   on('#tgSearch','oninput',e=>{ PL.tg.search=e.target.value; const pos=e.target.selectionStart; render(); const s=q('#tgSearch'); if(s){ s.focus(); s.setSelectionRange(pos,pos); } });
   on('#plSearch','oninput',e=>{ PL.f.search=e.target.value; const pos=e.target.selectionStart; render(); const s=q('#plSearch'); s.focus(); s.setSelectionRange(pos,pos); });
