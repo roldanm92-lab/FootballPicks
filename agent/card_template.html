@@ -64,7 +64,7 @@ button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:v
 
   <section class="note">
     <h2>How far to trust this</h2>
-    <p>The agent was replayed on every NFL prop this season, using only games played before each one, with each price carrying the books' real hold (about 7%). A play shows here only if it passes a setting that beat the price in that replay. Results swung week to week, so treat this as a shortlist, not a lock.</p>
+    <p>Every time this page is built, the agent is replayed on every prop this season, using only games played before each one, with each price carrying the books' real hold (about 7%). Strong and Lean plays come only from play types that are making money in that replay right now. Play types that are losing are shown as Watch, so you can follow them without betting them.</p>
     <div class="bt" id="bt"></div>
     <p><strong>Prices:</strong> unders show the books' consensus under price and the best book where props.cash lists both sides. When it doesn't, the under price is estimated from the over and the play is capped at Lean; check it at your book. Re-check injuries close to game time.</p>
   </section>
@@ -96,8 +96,19 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const state = {sport:'all', game:'all', side:'all', strong:false, best:true};
 
 $('sub').textContent = `NFL data ${DATA.scraped.nfl} · NBA data ${DATA.scraped.nba} · ${DATA.plays.length} plays passed the agent's checks`;
-const games = [...new Map(DATA.plays.map(p => [p.game, p.kickoff])).entries()];
-for (const [g, k] of games) { const o = document.createElement('option'); o.value = g; o.textContent = `${g} · ${k ?? ''}`; $('game').append(o); }
+// kickoff "Thu 11/5, 8:15 PM" -> sortable number (month, day, minutes)
+const kickKey = k => { const m = /(\d+)\/(\d+),\s*(\d+):(\d+)\s*(AM|PM)/.exec(k || ''); if (!m) return 1e9;
+  const h = (+m[3] % 12) + (m[5] === 'PM' ? 12 : 0); return ((+m[1] * 32 + +m[2]) * 24 + h) * 60 + +m[4]; };
+function fillGames() {
+  const seen = new Map();
+  for (const p of DATA.plays) if (state.sport === 'all' || p.sport === state.sport) seen.set(p.game, p.kickoff);
+  const list = [...seen.entries()].sort((a, b) => kickKey(a[1]) - kickKey(b[1]) || a[0].localeCompare(b[0]));
+  if (state.game !== 'all' && !seen.has(state.game)) state.game = 'all';
+  $('game').innerHTML = '<option value="all">All games</option>' +
+    list.map(([g, k]) => `<option value="${esc(g)}">${esc(g)} · ${esc(k ?? '')}</option>`).join('');
+  $('game').value = state.game;
+}
+fillGames();
 
 function reasons(p) {
   const out = [];
@@ -134,7 +145,7 @@ function render() {
       ${p.teammates_out.length ? `<div class="who">Teammates out: ${esc(p.teammates_out.join(', '))}</div>` : ''}
     </article>`).join('') : '<p class="empty">No plays match these filters.</p>';
 }
-$('sport').onchange = e => { state.sport = e.target.value; render(); };
+$('sport').onchange = e => { state.sport = e.target.value; fillGames(); render(); };
 $('game').onchange = e => { state.game = e.target.value; render(); };
 $('side').onchange = e => { state.side = e.target.value; render(); };
 for (const id of ['strong', 'best']) $(id).onclick = e => { state[id] = !state[id]; e.target.setAttribute('aria-pressed', state[id]); render(); };

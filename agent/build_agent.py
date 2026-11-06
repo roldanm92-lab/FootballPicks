@@ -92,6 +92,22 @@ def main():
             if n and sp == 'nfl':
                 summary.append(dict(label=f'{sp.upper()} {label.lower()}, last 3 weeks', n=n, roi=r))
 
+    # Self-check: a play type whose season replay is losing money is shown as Watch only.
+    season_roi = {}
+    for sp in sources:
+        res = backtest.bt(sp)
+        for kind in ('over', 'under'):
+            season_roi[(sp, kind)] = roi(res, kind)
+    demoted = []
+    for p in plays:
+        n, r = season_roi.get((p['sport'], 'over' if p['side'] == 'Over' else 'under'), (0, -1))
+        if p['conf'] in ('Strong', 'Lean') and (n < 30 or r < 0):
+            p['conf'] = 'Watch'; p['demoted'] = True
+            demoted.append(p)
+    for (sp, kind), (n, r) in season_roi.items():
+        if n and (n < 30 or r < 0):
+            print(f'  {sp.upper()} {kind}s losing in replay ({n} bets, {r:+.1%}): shown as Watch')
+
     tpl = open(os.path.join(HERE, 'card_template.html'), encoding='utf-8').read()
     payload = json.dumps({'plays': plays, 'scraped': scraped, 'summary': summary,
                           'built': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')})
