@@ -8,7 +8,8 @@ Run from anywhere:  python agent/build_agent.py
   5. appends tonight's plays to agent/plays_log.json (for grading later)
 Needs only Python 3 standard library.
 """
-import os, re, json, sys, tempfile, datetime
+import os, re, json, sys, tempfile, datetime, argparse, shutil, subprocess
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -38,7 +39,50 @@ def ensure_tab(html):
         i = m[-1].end()
     return html[:i] + TAB + '\n' + html[i:], True
 
+REPO = 'roldanm92-lab/FootballPicks'
+
+def git(cmd, token=None, check=True):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    out = (r.stdout or '') + (r.stderr or '')
+    if token:
+        out = out.replace(token, '***')
+    if check and r.returncode != 0:
+        shown = ' '.join(c.replace(token, '***') if token else c for c in cmd)
+        sys.exit(f'FAILED: {shown}\n{out}')
+    return r.returncode, out
+
+def push_page(page, token_file):
+    """Push only agent.html (same clone/commit/push pattern as build_picks_html.py)."""
+    token = os.environ.get('FOOTBALLPICKS_PAT')
+    if not token and token_file and Path(token_file).exists():
+        token = Path(token_file).read_text().strip()
+    if not token:
+        sys.exit('No token: set FOOTBALLPICKS_PAT or pass --token-file')
+    d = Path(tempfile.mkdtemp()) / 'repo'
+    url = f'https://{token}@github.com/{REPO}.git'
+    git(['git', 'clone', '--depth', '1', '-b', 'main', url, str(d)], token)
+    shutil.copyfile(page, d / 'agent.html')
+    git(['git', '-C', str(d), 'config', 'user.email', 'picks-bot@local'])
+    git(['git', '-C', str(d), 'config', 'user.name', 'picks-bot'])
+    git(['git', '-C', str(d), 'add', 'agent.html'])
+    rc, out = git(['git', '-C', str(d), 'commit', '-m',
+                   f'Agent page refresh {datetime.datetime.now():%Y-%m-%d %H:%M}'], check=False)
+    if rc != 0 and 'nothing to commit' in out:
+        print('agent.html unchanged vs. the live site - nothing to push.'); return
+    git(['git', '-C', str(d), 'push', url, 'main'], token)
+    print('Pushed agent.html -> https://roldanm92-lab.github.io/FootballPicks/agent.html')
+
 def main():
+    global INDEX, OUT, LOG
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--picks', default=INDEX, help='page whose embedded data is used (and that gets the Agent tab)')
+    ap.add_argument('--out', default=OUT, help='where to write agent.html')
+    ap.add_argument('--log', default=LOG, help='plays log (json)')
+    ap.add_argument('--no-tab', action='store_true', help="don't add the Agent tab to --picks")
+    ap.add_argument('--push', action='store_true', help='push agent.html to GitHub by itself')
+    ap.add_argument('--token-file', help='file holding the GitHub token (else env FOOTBALLPICKS_PAT)')
+    a = ap.parse_args()
+    INDEX, OUT, LOG = a.picks, a.out, a.log
     html = open(INDEX, encoding='utf-8').read()
     data_dir = tempfile.mkdtemp(prefix='agent_data_')
     os.environ['AGENT_DATA_DIR'] = data_dir
@@ -116,7 +160,7 @@ def main():
             + tpl.replace('__DATA__', payload.replace('</', '<\\/')) + '\n</html>\n')
     open(OUT, 'w', encoding='utf-8').write(page)
 
-    html2, added = ensure_tab(html)
+    html2, added = (html, False) if a.no_tab else ensure_tab(html)
     if added:
         open(INDEX, 'w', encoding='utf-8').write(html2)
 
@@ -134,6 +178,8 @@ def main():
                             market=p['market'], line=p['line'], side=p['side'], odds=p['odds'],
                             conf=p['conf'], core=p['core'], result=None))
     json.dump(log, open(LOG, 'w'), indent=1)
+    if a.push:
+        push_page(OUT, a.token_file)
 
     print(f'agent.html written: {len(plays)} plays; data NFL {scraped["nfl"]}, NBA {scraped["nba"]}; '
           f'tab {"added" if added else "already there"}; log {len(log)} entries')
