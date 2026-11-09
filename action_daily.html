@@ -213,7 +213,7 @@ function render(){
       ${sport===k?arts(s.articles,s.label+' articles'):''}
       ${sport===k&&pages.length?`<details><summary>${esc(s.label)} PRO pages (full text)</summary>${pages.map(([p,v])=>`<details><summary>${esc(p)}</summary><pre>${esc(v)}</pre></details>`).join('')}</details>`:''}</div>`);
   });
-  $('#list').innerHTML=parts.join('')||'<div class="empty">Nothing scraped yet. Run Action Daily (menu D) on the PC.</div>';
+  $('#list').innerHTML=parts.join('')||(sport!=='all'&&!(D.sports||{})[sport]?`<div class="empty">No ${esc(sport)} on today's board (Action Network or freesupertips).</div>`:'<div class="empty">Nothing scraped yet. Run Action Daily (menu D) on the PC.</div>');
 }
 document.addEventListener('click',e=>{
   const c=e.target.closest('.chip'); if(c){ sport=c.dataset.s; render(); try{localStorage.setItem('ad_sport',sport)}catch(_){} return; }
@@ -222,6 +222,8 @@ document.addEventListener('click',e=>{
 });
 $('#q').addEventListener('input',e=>{ q=e.target.value.trim().toLowerCase(); render(); });
 try{ const s=localStorage.getItem('ad_sport'); if(s&&(s==='all'||(D.sports||{})[s])) sport=s; }catch(_){}
+const fromHash=()=>{ const h=decodeURIComponent((location.hash||'').slice(1)).toLowerCase(); if(h) sport=h; };
+fromHash(); window.addEventListener('hashchange',()=>{ fromHash(); render(); });
 $('#meta').textContent = D.date ? `${new Date(D.date+'T12:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'})} · updated ${new Date(D.scraped_at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}${D.attached===false?' · logged out':''}` : '';
 render();
 </script>
