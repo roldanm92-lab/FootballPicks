@@ -46,6 +46,14 @@
     padding-right:max(14px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line-soft);}
   .ui-brand{display:flex;align-items:baseline;gap:10px;padding:12px 0 4px;}
   .ui-brand b{font:700 21px/1 var(--f-scan);letter-spacing:.005em;}
+  .ui-brand{align-items:center;}
+  .ui-sport{position:relative;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 0;cursor:pointer;min-height:40px;}
+  .ui-sport b{font:700 24px/1 var(--f-scan);}
+  .ui-sport i{width:9px;height:9px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);}
+  .ui-sport select{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer;font-size:16px;appearance:none;-webkit-appearance:none;}
+  .ui-sport:has(select:focus-visible){outline:2px solid var(--link);outline-offset:2px;border-radius:6px;}
+  .ui-sport.off{pointer-events:none;} .ui-sport.off i{display:none;}
+  .ui-sport.off b::after{content:"";}
   .ui-brand span{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;}
   .sportbar{display:none !important;}   /* the old dropdown stays in the DOM (buildSportSelect fills it) */
 
@@ -3364,8 +3372,30 @@ function build(){
 
   // brand row with the current sport's data time
   const brand = document.createElement('div'); brand.className = 'ui-brand';
-  brand.innerHTML = '<b>Picks board</b><span id="uiFresh"></span>';
+  brand.innerHTML = '<label class="ui-sport"><b id="uiSportName">Picks</b><i aria-hidden="true"></i>'
+    + '<select id="uiSportSel" aria-label="Sport"></select></label><span id="uiFresh"></span>';
   top.insertBefore(brand, top.firstChild);
+  // sport picker (11/10): a dropdown built from the tab row, which stays in the page (hidden) because the board's
+  // own code, the build scripts and the hub all work through those tabs
+  const sel = brand.querySelector('#uiSportSel'), strip = $('.sporttabs');
+  // links to the old separate pages stay out (their content is inside the board); MLB's own board stays a link
+  const tabs = ()=> Array.from(strip.children).filter(t=>t.classList.contains('sporttab') && (t.tagName!=='A' || t.id==='mlbTab'));
+  const label = t=> (t.firstChild && t.firstChild.nodeType===3 ? t.firstChild.textContent : t.textContent).trim();
+  const isOn = t=> document.body.dataset.xsport ? (t.dataset.xsport===document.body.dataset.xsport) : (t.classList.contains('active') && !!t.dataset.sport);
+  function fillSports(){
+    const ts = tabs(), cur = ts.find(isOn);
+    sel.innerHTML = ts.map((t,i)=>{ const n = t.querySelector('.ui-n'); const ext = t.tagName==='A';
+      return `<option value="${i}" ${t===cur?'selected':''}>${label(t)}${n?' ('+n.textContent+')':''}${ext?' ↗':''}</option>`; }).join('');
+    $('#uiSportName').textContent = cur ? label(cur) : 'Picks';
+  }
+  sel.addEventListener('change', ()=>{
+    const t = tabs()[+sel.value]; if(!t) return;
+    if(t.tagName==='A'){ location.href = t.getAttribute('href'); return; }
+    t.click(); setTimeout(fillSports, 0);
+  });
+  new MutationObserver(fillSports).observe(strip, {childList:true, subtree:true, attributes:true, attributeFilter:['class']});
+  new MutationObserver(fillSports).observe(document.body, {attributes:true, attributeFilter:['data-xsport']});
+  fillSports();
 
   // upcoming-game counts on the sport tabs
   const G = window.__GAMES||{}, B = window.__BOARD;
@@ -3405,7 +3435,9 @@ function build(){
     const a = $('.viewtab.active[data-view]'); document.body.dataset.view = a ? a.dataset.view : 'board';
     // inline + important so an older board_upgrades CSS block re-added by a build can't hide the sport row
     const st = $('.sporttabs'), sb = $('#sportBar');
-    if(st) st.style.setProperty('display', /^(top|agent|mybets)$/.test(document.body.dataset.view) ? 'none' : 'flex', 'important');
+    if(st) st.style.setProperty('display', 'none', 'important');      // the dropdown replaces the tab row
+    const sp = $('.ui-sport'), off = /^(top|agent|mybets)$/.test(document.body.dataset.view);
+    if(sp){ sp.classList.toggle('off', off); if(off) $('#uiSportName').textContent = 'Picks board'; else fillSports(); }
     if(sb) sb.style.setProperty('display', 'none', 'important');
     const f = $('#uiFresh'), hub = window.__HUB; if(f) f.textContent = (document.body.dataset.xsport && hub && hub.ad) ? 'Updated '+new Date(hub.ad.scraped_at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) : freshness(curSport());
     const n = activeFilterCount(), b = sum.querySelector('.ui-n'); b.hidden = !n; b.textContent = n;
