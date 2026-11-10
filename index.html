@@ -441,6 +441,34 @@
   .ui-ag-top .ui-ag-odds{margin-left:0;}
   #myBetsView .tb-star{margin:-8px -10px -8px 0;}
 
+  /* ---------- UFC ---------- */
+  :root{--m-ko:#e8945a; --m-sub:#8fb3ff; --m-dec:#b9c0cc;}
+  .ufc-ev{display:flex;flex-direction:column;gap:3px;}
+  .ufc-ev span{font:500 12.5px var(--f-read);color:var(--muted);}
+  .ufc-bout .teams .vs{display:block;height:auto;font:500 11px var(--f-read);color:var(--faint);margin:1px 0;}
+  .ufc-f{display:block;}
+  .ufc-rec{font:500 12.5px var(--f-read);color:var(--muted);margin-left:5px;}
+  .ufc-ml{font:600 13px var(--f-scan);color:var(--muted);margin-left:6px;}
+  .ufc-mg{background:var(--raised);border-radius:10px;padding:12px 12px 10px;margin:4px 0 10px;}
+  .ufc-mg-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;}
+  .ufc-mg-h b{font:700 15px var(--f-scan);} .ufc-mg-h span{font-size:12px;color:var(--muted);}
+  .ufc-mg-row{margin:8px 0;}
+  .ufc-mg-name{display:flex;justify-content:space-between;font:600 14px var(--f-scan);margin-bottom:4px;}
+  .ufc-mg-track{display:flex;height:22px;border-radius:6px;overflow:hidden;background:var(--surface);}
+  .ufc-mg-track i{display:flex;align-items:center;justify-content:center;font:700 11.5px var(--f-scan);color:#14171c;font-style:normal;min-width:0;overflow:hidden;}
+  .m-ko{background:var(--m-ko);} .m-sub{background:var(--m-sub);} .m-dec{background:var(--m-dec);}
+  .ufc-mg-key{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:8px;}
+  .ufc-mg-key i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:0;}
+  .ufc-tape td:first-child{color:var(--muted);font:500 13px var(--f-read);white-space:normal;}
+  .ufc-tape td{text-align:center;} .ufc-tape th{text-align:center;color:var(--chalk);font:600 13px var(--f-scan);}
+  .ufc-hist{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .ufc-hist > div > b{font:700 14px var(--f-scan);display:block;margin-bottom:4px;}
+  .ufc-h{display:flex;gap:7px;font-size:12.5px;color:var(--muted);padding:4px 0;border-top:1px solid var(--line-soft);line-height:1.35;}
+  .ufc-res{font:700 12px var(--f-scan);width:14px;flex-shrink:0;color:var(--faint);} .ufc-res.w{color:var(--win);} .ufc-res.l{color:var(--loss);}
+  .ufc-links{display:flex;gap:16px;flex-wrap:wrap;}
+  .ufc-star{margin:-6px -8px -6px 0;}
+  @media (max-width:420px){ .ufc-hist{grid-template-columns:1fr;} }
+
   /* ---------- small screens ---------- */
   @media (max-width:420px){
     .gh{grid-template-columns:54px minmax(0,1fr) auto;gap:10px;padding:12px;}
@@ -3401,6 +3429,7 @@ const pct = v=> v==null?'':Math.round(+v)+'%';
 const BOARD_KEYS = {cfb:'cfb', ncaaf:'cfb', ncaab:'ncaab', nfl:'nfl', nba:'nba', nhl:'nhl'};
 const H = {ad:null, agent:null, notes:'', x:null, open:new Set(), q:''};
 window.__HUB = H;
+H.custom = H.custom || {};
 
 /* ---------- loading ---------- */
 async function pull(path, prefix){
@@ -3503,7 +3532,8 @@ const hub = g=> g.hub?`<a class="ui-link" href="${esc(g.hub)}" target="_blank" r
 const isLive = g=> /live|in_progress|progress|1st|2nd|3rd|half|quarter|period/i.test(g.status||'');
 
 /* ---------- extra sports: Action Daily events as board rows ---------- */
-function extraKeys(){ return H.ad ? Object.keys(H.ad.sports||{}).filter(k=>!BOARD_KEYS[k]) : []; }
+function extraKeys(){ return H.ad ? Object.keys(H.ad.sports||{}).filter(k=>!BOARD_KEYS[k] && !(H.custom||{})[k]) : []; }
+const customKeys = ()=> Object.keys(H.custom||{});
 function row(id, time, sub, head, meta, live, status, body){
   const open=H.open.has(id);
   return `<div class="game${open?' open':''}${status?' started':''}" data-hid="${esc(id)}"><div class="gh">
@@ -3530,7 +3560,9 @@ function matchesQ(g){
   return hay.includes(H.q);
 }
 function renderExtra(){
-  const box=$('#uiExtra'), s=(H.ad.sports||{})[H.x]; if(!box||!s) return;
+  const cu=(H.custom||{})[H.x], bx=$('#uiExtra');
+  if(cu && bx){ cu.render(bx, H.q); return; }
+  const box=bx, s=((H.ad||{}).sports||{})[H.x]; if(!box||!s) return;
   const gs=(s.games||[]).filter(matchesQ).sort((a,b)=>String(a.start).localeCompare(String(b.start)));
   const fu=(s.fst_unmatched||[]).filter(matchesQ);
   const day = H.ad.date ? new Date(H.ad.date+'T12:00').toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'}) : 'Today';
@@ -3656,6 +3688,8 @@ H.focusAgent = a=>{ Object.assign(AG, {sport:a.sport, game:a.game, side:'all', s
   if(el){ el.scrollIntoView({block:'center'}); const w=el.querySelector('.ui-agwhy'); if(w) w.open=true; } }, 30); };
 
 /* ---------- wiring ---------- */
+H.fn = {picks:(...a)=>picks(...a), arts:(...a)=>arts(...a), hub:(...a)=>hub(...a)};
+H.setExtra = k=>setExtra(k);
 function setExtra(k){
   H.x = k || null; H.open.clear();
   document.body.dataset.xsport = k || '';
@@ -3664,7 +3698,8 @@ function setExtra(k){
   if(k){ if(window.__BOARD && $('.viewtab.active[data-view]')?.dataset.view!=='board') window.__BOARD.switchView('board'); renderExtra(); }
   else { const box=$('#uiExtra'); if(box) box.innerHTML=''; }
   boardFooter(); try{ history.replaceState(null,'', k ? '#'+k : location.pathname+location.search); }catch(e){}
-  const f=$('#uiFresh'); if(f && k && H.ad && H.ad.scraped_at) f.textContent='Updated '+new Date(H.ad.scraped_at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+  const fs = k && (H.custom||{})[k] ? H.custom[k].fresh : (H.ad||{}).scraped_at;
+  const f=$('#uiFresh'); if(f && k && fs) f.textContent='Updated '+new Date(fs).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
 }
 function showView(v){
   const av=$('#agentView'); if(av) av.style.display = v==='agent' ? '' : 'none';
@@ -3681,6 +3716,13 @@ function build(){
     b.onclick=()=>setExtra(k);
     const firstLink=strip.querySelector('a.sporttab'); strip.insertBefore(b, firstLink);
   });
+  customKeys().forEach(k=>{
+    const c=H.custom[k], n=c.count?c.count():0;
+    const b=document.createElement('div'); b.className='sporttab ui-x'; b.dataset.xsport=k; b.setAttribute('role','button'); b.tabIndex=0;
+    b.innerHTML=esc(c.label||k.toUpperCase())+(n?`<span class="ui-n">${n}</span>`:'');
+    b.onclick=()=>setExtra(k);
+    strip.insertBefore(b, strip.querySelector('a.sporttab'));
+  });
   // leaving an extra sport when a board sport is picked
   $$('.sporttab[data-sport]').forEach(t=>t.addEventListener('click', ()=>{ if(H.x) setExtra(null); setTimeout(boardFooter,0); }));
   // containers
@@ -3690,7 +3732,9 @@ function build(){
   $('#uiExtra').addEventListener('click', e=>{
     if(e.target.closest('a,details,summary')) return;
     const gh=e.target.closest('.gh'); if(!gh) return;
-    const card=gh.parentElement, id=card.dataset.hid;
+    const card=gh.parentElement;
+    if(card.dataset.ufc && (H.custom||{}).ufc){ H.custom.ufc.toggle(card.dataset.ufc); renderExtra(); return; }
+    const id=card.dataset.hid;
     H.open.has(id)?H.open.delete(id):H.open.add(id); renderExtra();
   });
   $('#searchBox').addEventListener('input', e=>{ H.q=e.target.value.trim().toLowerCase(); if(H.x) renderExtra(); });
@@ -3707,11 +3751,193 @@ function build(){
   decorate(); boardFooter();
   // deep links: #soccer, #ncaaw, #agent (old action_daily.html#soccer bookmarks still work on that page)
   const route=()=>{ const h=decodeURIComponent((location.hash||'').slice(1)).toLowerCase();
-    if(h==='agent') window.__BOARD.switchView('agent'); else if(h && extraKeys().includes(h) && H.x!==h) setExtra(h); };
+    if(h==='agent') window.__BOARD.switchView('agent'); else if(h && (extraKeys().includes(h)||customKeys().includes(h)) && H.x!==h) setExtra(h); };
   route(); window.addEventListener('hashchange', route);
 }
 async function start(){ await load(); const go=()=>{ if(window.__BOARD) build(); else setTimeout(go,50); }; go(); }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', ()=>setTimeout(start,0)); else start();
+})();
+</script>
+<script>
+/* ===== Picks board UI v2: UFC tab (2026-11-10) =====
+   Data: window.EMBEDDED_UFC (embed_ufc.py, from scrape_ufc.py: Tapology + UFCStats + Action Network odds).
+   Registers itself with the hub as an extra sport ("UFC" in the sport strip). Stars go to localStorage
+   "ufc_myplays" (ufc|<bout id>|<selection>) and show up in My bets. */
+(function(){
+"use strict";
+const D = window.EMBEDDED_UFC;
+if(!D || !(D.events||[]).length || !window.__HUB) return;
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const am = o=> o==null?'–':(o>0?'+'+o:''+o);
+const pc = p=> p==null?'–':Math.round(p*100)+'%';
+const last = n=> String(n||'').trim().split(/\s+/).slice(-1)[0];
+const ML = {ko:'KO/TKO', sub:'Submission', dec:'Decision'};
+const U = {open:new Set()};
+window.__UFC = U;
+
+/* ---------- stars ---------- */
+const SK = 'ufc_myplays';
+const stars = ()=>{ try{ return new Set(JSON.parse(localStorage.getItem(SK)||'[]')); }catch(e){ return new Set(); } };
+const saveStars = s=>{ try{ localStorage.setItem(SK, JSON.stringify([...s])); }catch(e){} };
+const skey = (b, sel)=> `ufc|${b.tap_id}|${sel}`;
+function toggleStar(k){ const s=stars(); s.has(k)?s.delete(k):s.add(k); saveStars(s); if(window.__MYBETS) __MYBETS.badge(); }
+U.stars = stars; U.toggle = toggleStar;
+
+/* ---------- fight lookup for My bets ---------- */
+function bouts(){ const out=[]; D.events.forEach(e=>e.bouts.forEach(b=>out.push([e,b]))); return out; }
+U.collect = ()=>{
+  const s=stars(), out=[], seen=new Set(), now=Date.now();
+  bouts().forEach(([e,b])=>{
+    const sels = selections(b);
+    sels.forEach(x=>{ const k=skey(b,x.sel); if(!s.has(k)) return; seen.add(k);
+      const d = b.start ? new Date(b.start) : (e.date ? new Date(e.date+'T22:00:00') : null);
+      out.push({kind:'ufc', sp:'ufc', key:k, bet:x.sel, odds:x.odds, game:`${b.fighters[0].name} vs ${b.fighters[1].name}`, date:d,
+        started: !!(d && d.getTime()<=now), src:[x.src], bout:b.tap_id}); });
+  });
+  s.forEach(k=>{ if(seen.has(k)) return; const p=k.split('|'); out.push({kind:'ufc', sp:'ufc', key:k, bet:p.slice(2).join('|'), stale:true, src:['UFC']}); });
+  return out;
+};
+U.unstar = k=>{ const s=stars(); s.delete(k); saveStars(s); };
+U.openBout = id=>{ U.open.add(id); if(__HUB.setExtra) __HUB.setExtra('ufc');
+  setTimeout(()=>{ const el=document.querySelector(`[data-ufc="${id}"]`); if(el) el.scrollIntoView({block:'start'}); window.scrollBy(0,-140); }, 30); };
+
+/* every starrable line of a fight: graded plays + our fair prices */
+function selections(b){
+  const m=b.model||{}, F=b.fighters, out=[];
+  (m.plays||[]).forEach(p=>out.push({sel:`${p.sel}${p.market==='Moneyline'?' ML':' rounds'}`, odds:p.odds, src:`UFC ${p.market}${p.grade?' · grade '+p.grade:''} · EV ${p.ev>0?'+':''}${Math.round(p.ev*100)}%`}));
+  if(m.outcomes) [0,1].forEach(i=>Object.keys(ML).forEach(k=>out.push({sel:`${F[i].name} by ${ML[k]}`, odds:null, src:`UFC method · our price ${am(m.fair.method[i][k])}`})));
+  if(m.distance!=null){ out.push({sel:'Fight goes the distance', odds:null, src:`UFC · our price ${am(m.fair.distance[0])}`});
+    out.push({sel:'Fight doesn\'t go the distance', odds:null, src:`UFC · our price ${am(m.fair.distance[1])}`}); }
+  return out;
+}
+
+/* ---------- pieces ---------- */
+const star = (b, sel, s)=>{ const k=skey(b,sel), on=s.has(k); return `<button class="star ufc-star ${on?'on':''}" data-ustar="${esc(k)}" aria-label="Star ${esc(sel)}">${on?'★':'☆'}</button>`; };
+function methodBars(title, rows, note){
+  // rows: [{name, total, ko, sub, dec}] in % of all picks
+  if(!rows.some(r=>r.total)) return '';
+  return `<div class="ufc-mg"><div class="ufc-mg-h"><b>${esc(title)}</b>${note?`<span>${esc(note)}</span>`:''}</div>
+    ${rows.map(r=>`<div class="ufc-mg-row"><div class="ufc-mg-name"><span>${esc(r.name)}</span><b>${r.total==null?'–':Math.round(r.total)+'%'}</b></div>
+      <div class="ufc-mg-track">${['ko','sub','dec'].map(k=>r[k]?`<i class="m-${k}" style="width:${r[k]}%" title="${ML[k]} ${Math.round(r[k])}%">${r[k]>=7?Math.round(r[k])+'%':''}</i>`:'').join('')}</div></div>`).join('')}
+    <div class="ufc-mg-key"><span><i class="m-ko"></i>KO/TKO</span><span><i class="m-sub"></i>Submission</span><span><i class="m-dec"></i>Decision</span></div></div>`;
+}
+function fansRows(b){
+  const pr=b.predictions||{}, F=b.fighters;
+  return [0,1].map(i=>{ const m=(pr.method||[{},{}])[i]||{}, tot=(pr.fighter||[])[i];
+    const sum=(m.ko||0)+(m.sub||0)+(m.dec||0), sc = tot&&sum ? tot/sum : 1;   // keep the split inside the fighter's share
+    return {name:F[i].name, total:tot, ko:(m.ko||0)*sc, sub:(m.sub||0)*sc, dec:(m.dec||0)*sc}; });
+}
+function modelRows(b){
+  const m=b.model||{}, F=b.fighters; if(!m.outcomes) return [];
+  return [0,1].map(i=>({name:F[i].name, total:m.p[i]*100, ko:m.outcomes[i].ko*100, sub:m.outcomes[i].sub*100, dec:m.outcomes[i].dec*100}));
+}
+function compare(b){
+  const F=b.fighters, rows=[];
+  const add=(l,a,c)=>{ if((a!=null&&a!=='')||(c!=null&&c!=='')) rows.push([l,a??'–',c??'–']); };
+  const rec=f=>f.record?f.record.join('-'):null;
+  add('Record', rec(F[0]), rec(F[1]));
+  Object.entries(b.compare||{}).forEach(([l,v])=>{ if(!/record/i.test(l)) add(l, v[0], v[1]); });
+  if(!b.compare || !Object.keys(b.compare).length){ add('Age', F[0].age, F[1].age); add('Height', F[0].height, F[1].height); add('Reach', F[0].reach, F[1].reach); add('Camp', F[0].gym, F[1].gym); }
+  add('Streak', F[0].streak, F[1].streak);
+  const wb=(f,s)=>f[s]?`${f[s].ko||0} KO · ${f[s].sub||0} sub · ${f[s].dec||0} dec`:null;
+  add('Wins by', wb(F[0],'wins_by'), wb(F[1],'wins_by'));
+  add('Losses by', wb(F[0],'losses_by'), wb(F[1],'losses_by'));
+  const S=['SLpM','Str. Acc.','SApM','Str. Def','TD Avg.','TD Acc.','TD Def.','Sub. Avg.'];
+  const LBL={'SLpM':'Strikes landed / min','Str. Acc.':'Striking accuracy','SApM':'Strikes absorbed / min','Str. Def':'Striking defense','TD Avg.':'Takedowns / 15 min','TD Acc.':'Takedown accuracy','TD Def.':'Takedown defense','Sub. Avg.':'Sub attempts / 15 min'};
+  S.forEach(k=>add(LBL[k], (F[0].stats||{})[k], (F[1].stats||{})[k]));
+  if(!rows.length) return '';
+  return `<div class="ui-sec"><h4>Tale of the tape</h4><table class="ui-odds ufc-tape"><tr><th></th><th>${esc(last(F[0].name))}</th><th>${esc(last(F[1].name))}</th></tr>
+    ${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('')}</table></div>`;
+}
+function history(b){
+  const F=b.fighters; if(!F.some(f=>(f.history||[]).length)) return '';
+  return `<div class="ui-sec"><h4>Recent fights</h4><div class="ufc-hist">${F.map(f=>`<div><b>${esc(f.name)}</b>${(f.history||[]).map(h=>`<div class="ufc-h"><span class="ufc-res ${h.res==='w'||h.res==='W'?'w':h.res==='l'||h.res==='L'?'l':''}">${esc(String(h.res||'').toUpperCase())}</span><span>${esc(h.opp||h.line||'')}${h.method?` · ${esc(h.method)}`:''}${h.rd?` R${esc(h.rd)}`:''}${h.time?` ${esc(h.time)}`:''}</span></div>`).join('')||'<div class="pl-note">No fights listed.</div>'}</div>`).join('')}</div></div>`;
+}
+function market(b){
+  const mk=(b.model||{}).market||{}, F=b.fighters; if(!mk.consensus && !Object.keys(mk.books||{}).length) return '';
+  const rows=[];
+  if(mk.consensus) rows.push(['Consensus', am(mk.consensus[0]), am(mk.consensus[1])]);
+  if(mk.open) rows.push(['Open', am(mk.open[0]), am(mk.open[1])]);
+  Object.entries(mk.books||{}).forEach(([bk,v])=>rows.push([bk, am(v[0]), am(v[1])]));
+  if(mk.tickets && mk.tickets.some(x=>x)) rows.push(['Bets / money', `${mk.tickets[0]??'–'}% / ${(mk.money||[])[0]??'–'}%`, `${mk.tickets[1]??'–'}% / ${(mk.money||[])[1]??'–'}%`]);
+  const t=mk.total;
+  return `<div class="ui-sec"><h4>Moneyline by book</h4><table class="ui-odds"><tr><th></th><th>${esc(last(F[0].name))}</th><th>${esc(last(F[1].name))}</th></tr>
+    ${rows.map(r=>`<tr${r[0]==='Open'?' class="mut"':''}><td>${esc(r[0])}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>
+    ${t?`<div class="pl-note">Total rounds ${t.line}: consensus over ${am((t.consensus||{}).over)} / under ${am((t.consensus||{}).under)}${t.best_over?` · best over ${am(t.best_over[0])} ${esc(t.best_over[1])}`:''}${t.best_under?` · best under ${am(t.best_under[0])} ${esc(t.best_under[1])}`:''}</div>`:''}</div>`;
+}
+function plays(b, s){
+  const m=b.model||{}, F=b.fighters, ps=m.plays||[];
+  let h='';
+  if(ps.length) h+=`<div class="picksec"><h4>Graded lines</h4>${ps.map(p=>{ const sel=`${p.sel}${p.market==='Moneyline'?' ML':' rounds'}`;
+    return `<div class="pickrow"><div style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pl-grade ${p.grade?'g'+p.grade:''}">${p.grade||'–'}</span>
+      <div style="min-width:0"><div class="ptext">${esc(p.sel)}${p.market==='Moneyline'?' ML':' rounds'} <span class="pl-odds">${am(p.odds)}</span></div>
+      <div class="pwho">${esc(p.book||'')} · ours ${pc(p.p)} (${am(p.fair)}) · <b class="${p.ev>0?'good':'bad'}">EV ${p.ev>0?'+':''}${Math.round(p.ev*100)}%</b></div></div></div>${star(b,sel,s)}</div>`; }).join('')}</div>`;
+  if(m.outcomes){
+    const row=(sel,p,f)=>`<div class="pickrow"><div><div class="ptext">${esc(sel)}</div><div class="pwho">ours ${pc(p)} · fair ${am(f)}</div></div>${star(b,sel,s)}</div>`;
+    h+=`<div class="picksec"><h4>Our prices <span class="mut" style="font:500 12.5px var(--f-read)">compare at your book</span></h4>
+      ${[0,1].map(i=>Object.keys(ML).map(k=>row(`${F[i].name} by ${ML[k]}`, m.outcomes[i][k], m.fair.method[i][k])).join('')).join('')}
+      ${row('Fight goes the distance', m.distance, m.fair.distance[0])}${row('Fight doesn\'t go the distance', 1-m.distance, m.fair.distance[1])}</div>`;
+  }
+  return h;
+}
+function adExtras(b){
+  const H=window.__HUB, s=H.ad && H.ad.sports && H.ad.sports.ufc; if(!s || !H.fn) return '';
+  const ks=b.fighters.map(f=>last(f.name).toLowerCase()).sort().join('|');
+  const g=(s.games||[]).find(x=>(x.teams||[]).map(t=>last(t).toLowerCase()).sort().join('|')===ks);
+  return g ? H.fn.picks(g)+H.fn.arts(g.articles,'Articles')+H.fn.hub(g) : '';
+}
+function body(e, b){
+  const s=stars(), pr=b.predictions||{}, m=b.model||{};
+  return methodBars('How fans pick it', fansRows(b), pr.picks?`${Number(pr.picks).toLocaleString()} picks on Tapology`:'Tapology community')
+    + methodBars('Our model', modelRows(b), 'market + fans + fight history')
+    + (m.note?`<div class="pl-note">${esc(m.note)}</div>`:'')
+    + plays(b, s) + market(b) + compare(b) + history(b) + adExtras(b)
+    + `<div class="ufc-links">${b.url?`<a class="ui-link" href="${esc(b.url)}" target="_blank" rel="noopener">Bout on Tapology</a>`:''}
+       ${b.fighters.map(f=>f.url?`<a class="ui-link" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(last(f.name))}</a>`:'').join('')}</div>`;
+}
+function row(e, b){
+  const F=b.fighters, m=b.model||{}, pr=b.predictions||{}, open=U.open.has(b.tap_id);
+  const rec=f=>f.record?` <span class="ufc-rec">${f.record.join('-')}</span>`:'';
+  const t = b.start ? new Date(b.start).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) : '';
+  const bill = /main event/i.test(b.billing||'') && !/co/i.test(b.billing||'') ? 'Main event' : /co-main/i.test(b.billing||'') ? 'Co-main' : (b.segment || (/prelim/i.test(b.billing||'')?'Prelims':/main card/i.test(b.billing||'')?'Main card':''));
+  const fav = m.market && m.market.consensus ? m.market.consensus : null;
+  const meta = [String(b.weight||b.an_weight||'').replace(/\s*·.*$/,''), b.rounds?b.rounds+' rds':'', b.title?'Title':'',
+    pr.fighter&&pr.fighter[0]!=null?`fans ${Math.round(Math.max(...pr.fighter))}% ${esc(last(F[pr.fighter[0]>=pr.fighter[1]?0:1].name))}`:'',
+    (m.plays||[]).some(p=>p.grade)?`<b class="good">${(m.plays||[]).filter(p=>p.grade).map(p=>p.grade).sort()[0]} line</b>`:''].filter(Boolean).join(' · ');
+  return `<div class="game ufc-bout${open?' open':''}" data-ufc="${esc(b.tap_id)}"><div class="gh">
+    <div class="time">${esc(bill||t||'')}${t&&bill?`<div class="meta">${esc(t)}</div>`:''}</div>
+    <div class="teams"><span class="ufc-f">${esc(F[0].name)}${rec(F[0])}${fav?` <span class="ufc-ml">${am(fav[0])}</span>`:''}</span><span class="vs">vs</span><span class="ufc-f">${esc(F[1].name)}${rec(F[1])}${fav?` <span class="ufc-ml">${am(fav[1])}</span>`:''}</span>
+      <div class="meta">${meta}</div></div><div class="chevron">▶</div></div>
+    <div class="gb">${open?body(e,b):''}</div></div>`;
+}
+function render(box, q){
+  q=(q||'').toLowerCase();
+  let h = D.sample ? `<div class="pl-banner">Sample data: Tapology fields here are made up for testing the layout. The first real UFC run replaces them.</div>` : '';
+  D.events.forEach(e=>{
+    const bs=e.bouts.filter(b=>!q || b.fighters.some(f=>f.name.toLowerCase().includes(q)) || String(b.weight||'').toLowerCase().includes(q));
+    if(!bs.length) return;
+    const d = e.date ? new Date(e.date+'T12:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'}) : '';
+    h += `<div class="dayhead ufc-ev">${esc(e.name)}<span>${esc([d, e.time, e.venue||e.location, e.broadcast].filter(Boolean).join(' · '))}</span></div>` + bs.map(b=>row(e,b)).join('');
+  });
+  if(!h || h.indexOf('ufc-bout')<0) h += `<div class="empty">${q?'No fighter matches that search.':'No upcoming UFC fights in the data yet.'}</div>`;
+  h += `<details class="pl-how"><summary>How the UFC numbers work</summary>
+    <p><b>Win %</b> is 80% the betting market (consensus moneyline with the vig removed) and 20% Tapology's fan picks.</p>
+    <p><b>How a win comes</b> blends the fans' method split (40%), the fighter's own wins by KO, submission and decision (35%) and how his opponent has lost (25%), from UFCStats or Tapology. Small records are padded so one fight doesn't swing it.</p>
+    <p><b>Rounds</b>: decisions plus finishes spread over the rounds (each round less likely than the one before), then moved halfway to the market's over/under price.</p>
+    <p><b>Grades</b> only where a book has a price (moneyline, total rounds), at the best price: A = EV 10%+ with fans on the same side, B = EV 5%+, C = EV 2%+. Method props show our fair price to compare at your book. Books quoting exact mirror prices (+178/−178) are left out: on 11/9 those were stale or had the sides swapped.</p>
+    <p>Scraped ${esc(new Date(D.scraped_at).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}))}.</p></details>`;
+  box.innerHTML = h;
+  box.querySelectorAll('[data-ustar]').forEach(el=>el.onclick=ev=>{ ev.stopPropagation(); toggleStar(el.dataset.ustar); render(box, q); });
+}
+U.render = render;
+U.count = ()=> D.events.reduce((n,e)=>n+e.bouts.length, 0);
+U.toggleOpen = id=>{ U.open.has(id)?U.open.delete(id):U.open.add(id); };
+
+/* register with the hub as an extra sport */
+__HUB.custom = __HUB.custom || {};
+__HUB.custom.ufc = {label:'UFC', count:U.count, render, idAttr:'ufc', toggle:U.toggleOpen,
+  fresh: D.scraped_at};
 })();
 </script>
 <script>
@@ -3725,7 +3951,7 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 "use strict";
 const $ = s=>document.querySelector(s), $$ = s=>Array.from(document.querySelectorAll(s));
 const esc = s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const LBL = {cfb:'NCAAF', ncaab:'NCAAB', nfl:'NFL', nba:'NBA', nhl:'NHL'};
+const LBL = {cfb:'NCAAF', ncaab:'NCAAB', nfl:'NFL', nba:'NBA', nhl:'NHL', ufc:'UFC'};
 const BOARD_SPORTS = ['cfb','ncaab','nfl','nba','nhl'], PROP_SPORTS = ['nfl','nba'];
 const fmtOdds = o=> o==null||o===''?'':(+o>0?'+'+o:''+o);
 const read = k=>{ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } };
@@ -3799,6 +4025,7 @@ function collect(){
     set.forEach(k=>{ if(done.has(k)) return; const p = k.split('|');
       out.push({kind:'prop', sp, key:k, bet:`${p[0]} ${p[3]==='U'?'Under':'Over'} ${p[2]} ${p[1]}`, stale:true, src:['Props']}); });
   });
+  if(window.__UFC) out.push(...__UFC.collect());
   return out;
 }
 MB.count = ()=> collect().filter(x=>!x.stale && !x.started).length;
@@ -3841,11 +4068,13 @@ function render(){
 }
 function unstar(x){
   const B = window.__BOARD;
+  if(x.kind==='ufc'){ if(window.__UFC) __UFC.unstar(x.key); return; }
   if(x.kind==='board'){ const set = B.S[x.sp].myPlays; set.delete(x.key); B.savePlays(x.sp); }
   else togglePropStar(x.sp, x.key);
 }
 function open(x){
   const B = window.__BOARD; if(!x || x.stale) return;
+  if(x.kind==='ufc'){ B.switchView('board'); if(window.__UFC) __UFC.openBout(x.bout); return; }
   if(x.kind==='board'){
     B.switchSport(x.sp); B.S[x.sp].filters.search = x.team||''; $('#searchBox').value = x.team||'';
     B.switchView('board'); B.renderBoard(); window.scrollTo(0,0); return;
@@ -3861,6 +4090,7 @@ function exportAll(){
   const B = window.__BOARD, data = {version:1, exported:new Date().toISOString(), board:{}, props:{}};
   BOARD_SPORTS.forEach(sp=>data.board[sp] = [...(B.S[sp] ? B.S[sp].myPlays : [])]);
   PROP_SPORTS.forEach(sp=>data.props[sp] = [...propStars(sp)]);
+  if(window.__UFC) data.ufc = [...__UFC.stars()];
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:'application/json'}));
   a.download = 'my_bets.json'; a.click();
@@ -3876,6 +4106,7 @@ function importFile(e){
     } else {
       Object.entries(d.board||{}).forEach(([sp,ks])=>{ if(!B.S[sp]) return; ks.forEach(k=>{ B.S[sp].myPlays.add(k); n++; }); B.savePlays(sp); });
       Object.entries(d.props||{}).forEach(([sp,ks])=>{ const set = propStars(sp); ks.forEach(k=>{ set.add(k); n++; }); write(sp+'_propplays', [...set]); });
+      if(Array.isArray(d.ufc)){ const s = new Set(read('ufc_myplays')); d.ufc.forEach(k=>{ s.add(k); n++; }); write('ufc_myplays', [...s]); }
     }
     render(); status(`Imported ${n} stars.`);
   }catch(err){ status('That file isn\'t a My bets export: '+err.message, true); } };
