@@ -1225,6 +1225,10 @@ function buildGames(sport, sections){
     return false;
   }
   sec('action_deep').forEach(r=>{
+    // 2026-11-17 guard: Action Network's NFL hub now shows a 'Prop Projections' table right after
+    // Expert Picks; the deep scraper read its cells (Under / u2.5 / -102) as picks of the last analyst.
+    if(!r.Units && /^(over|under|[ou]\d+(\.\d+)?|[+-]\d{3,4})$/i.test(String(r.Pick||'').trim())) return;
+    if(r.Note && /Prop Projections/.test(r.Note)) r.Note = r.Note.split(/\s*\S+ vs\. \S+ Props Prop Projections/)[0] || null;
     let g = null;
     for(const cand of games){
       if(!cand.team1 || !cand.team2) continue;
